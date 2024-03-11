@@ -32,7 +32,42 @@ public class CustomerAgent extends Agent {
 			return false;
 	}
 
-	
+	public abstract boolean[] voteLoop (int[][] contracts, int acceptanceAmount){
+		int[][] clonedContracts = contracts;
+		boolean[] results;
+		//iterate over all the rows and check if one contract is better than the other, if so the better contract moves to the left
+		//bubblesort (?)
+		for(int rowsA=0;rowsA<contracts.length;rowsA++) {
+			for(int rowsB=0;rowsB<contracts.length;rowsB++) {
+				if (vote(contracts[rowsB], contracts[rowsB + 1])) {
+					int[] temp = clonedContracts[rowsB];
+					clonedContracts[rowsB] = clonedContracts[rowsB + 1];
+					clonedContracts[rowsB + 1] = temp;
+				}
+				rowsB++;
+			}
+			rowsA++;
+		}
+		//after the best contracts have been moved to the top, an iteration (for the true/false determination) is needed to retain
+		//the order of the original contracts array
+		//e.g. if the array from our contracts[0] has been found among the first 60 arrays of our sorted/cloned array then -> write true for
+		//results[0], else write false; repeat for every row
+		for(int rows=0;rows<contracts.length;rows++) {
+			for(int rowsCloned=0;rowsCloned<acceptanceAmount;rowsCloned++) {
+				if(clonedContracts[rowsCloned] == contracts[rows]){
+					results[rows] = true;
+				}
+				rowsCloned++;
+			}
+			if(results[rows] != true){
+				results[rows] = false;
+			}
+			rows++;
+		}
+
+		return results;
+	}
+
 	
 	public int getContractSize() {
 		return timeMatrix.length;
