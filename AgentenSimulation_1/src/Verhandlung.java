@@ -33,8 +33,8 @@ public class Verhandlung {
 			boolean voteA, voteB;
 			
 			try{
-				agA = new SupplierAgent(new File("data/daten3ASupplier_200.txt"));
-				agB = new CustomerAgent(new File("data/daten4BCustomer_200_5.txt"));
+				agA = new SupplierAgent(new File("../data/daten3ASupplier_200.txt"));
+				agB = new CustomerAgent(new File("../data/daten4BCustomer_200_5.txt"));
 				med = new Mediator(agA.getContractSize(), agB.getContractSize());
 				
 				//Verhandlung initialisieren
