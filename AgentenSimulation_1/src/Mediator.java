@@ -1,20 +1,39 @@
 import java.io.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Mediator {
 
 	int contractSize;
+	int generationSize;
 	
-	public Mediator(int contractSizeA, int contractSizeB) throws FileNotFoundException{
+	public Mediator(int contractSizeA, int contractSizeB, int generationSize) throws FileNotFoundException{
 		if(contractSizeA != contractSizeB){
 			throw new FileNotFoundException("Verhandlung kann nicht durchgefuehrt werden, da Problemdaten nicht kompatibel");
 		}
 		this.contractSize = contractSizeA;
+		this.generationSize = generationSize;
 	}
 	
-	public int[] initContract(){
-		int[] contract = new int[contractSize];
-		for(int i=0;i<contractSize;i++)contract[i] = i;
-		return contract;
+	public int[][] initContract(){
+		int[][] contracts = new int[generationSize][contractSize];
+		List<Integer> contract = IntStream.range(0,contractSize).boxed().collect(Collectors.toList());
+		for (int i = 0; i <generationSize; i++) {
+			Collections.shuffle(contract);
+			contracts[i] = contract.stream().mapToInt(Integer::intValue).toArray();
+		}
+
+		return contracts;
+	}
+
+	public int[][] crossover(){
+
+	}
+
+	public int[][] mutate(){
+
 	}
 
 	public int[] constructProposal(int[] contract) {
@@ -27,5 +46,4 @@ public class Mediator {
 		proposal[element+1] = wert1;
 		return proposal;
 	}
-
 }
