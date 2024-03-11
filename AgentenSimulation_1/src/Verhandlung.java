@@ -1,5 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Arrays;
 
 
 //SIMULATION!
@@ -25,34 +26,33 @@ import java.io.FileNotFoundException;
 
 public class Verhandlung {	
 
+		private static final int generationsSize = 100;
+
 		public static void main(String[] args) {
-			int[] contract, proposal;
+			int[][] generation;
 			Agent agA, agB;
 			Mediator med;
-			int maxRounds, round;
-			boolean voteA, voteB;
+			int maxGenerations;
+			int currentAcceptanceAmount=60;
+
 			
 			try{
 				agA = new SupplierAgent(new File("../data/daten3ASupplier_200.txt"));
 				agB = new CustomerAgent(new File("../data/daten4BCustomer_200_5.txt"));
-				med = new Mediator(agA.getContractSize(), agB.getContractSize());
+				med = new Mediator(agA.getContractSize(), agB.getContractSize(), generationsSize);
 				
 				//Verhandlung initialisieren
-				contract  = med.initContract();							//Vertrag=Lösung=Jobliste
-				maxRounds = 1000000;										//Verhandlungsrunden
-				ausgabe(agA, agB, 0, contract);
-				
-				//Verhandlung starten	
-				for(round=1;round<maxRounds;round++) {					//Mediator				
-					proposal = med.constructProposal(contract);			//zweck: Win-win
-					voteA    = agA.vote(contract, proposal);            //Autonomie + Private Infos
-					voteB    = agB.vote(contract, proposal);
+				generation = med.initContract();
 
-					if(voteA && voteB) {
-						contract = proposal;
-						ausgabe(agA, agB, round, contract);
-					}
-				}			
+				boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
+				boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
+				boolean[] intersect = new boolean[currentAcceptanceAmount];
+
+				for (int i = 0; i < currentAcceptanceAmount; i++) {
+					intersect[i] = voteA[i] && voteB[i];
+				}
+
+
 				
 			}
 			catch(FileNotFoundException e){
