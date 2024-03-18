@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CustomerAgent extends Agent {
 
 	private int[][] timeMatrix;
-	HashMap<int[], Integer> evaluatedCosts = new HashMap<>();
+	HashMap<int[], Integer> evaluatedTimes = new HashMap<>();
 
 	public CustomerAgent(File file) throws FileNotFoundException {
 
@@ -35,17 +35,17 @@ public class CustomerAgent extends Agent {
 	}
 
 	public boolean[] voteLoop(int[][] contracts, final int acceptanceAmount) {
-		Map<Integer, Integer> costs = new LinkedHashMap<>();
+		Map<Integer, Integer> times = new LinkedHashMap<>();
 		for (int i = 0; i < contracts.length; i++) {
-			costs.put(i, evaluateNEW(contracts[i]));
+			times.put(i, evaluateNEW(contracts[i]));
 		}
 
-		costs = sortByValue(costs);
+		times = sortByValue(times);
 
 		boolean[] result = new boolean[contracts.length];
 		AtomicInteger count = new AtomicInteger();
 
-		costs.forEach((integer, integer2) -> {
+		times.forEach((integer, integer2) -> {
 			if (count.get() < acceptanceAmount) {
 				result[integer] = true;
 				count.getAndIncrement();
@@ -105,17 +105,17 @@ public class CustomerAgent extends Agent {
 
 	@Override
 	public int voteEnd(int[][] contracts) {
-		//calculation of costs of given contracts
-		Map<Integer, Integer> costs = new LinkedHashMap<>();
+		//calculation of times of given contracts
+		Map<Integer, Integer> times = new LinkedHashMap<>();
 		for (int i = 0; i < contracts.length; i++) {
-			costs.put(i, evaluateNEW(contracts[i]));
+			times.put(i, evaluateNEW(contracts[i]));
 		}
-		//sort the costs
-		Map<Integer, Integer> sortedCosts = sortByValue(costs);
-		//find the index/key of the highest/worst cost in the costs map of ln 109
+		//sort the times
+		Map<Integer, Integer> sortedTimes = sortByValue(times);
+		//find the index/key of the highest/worst time in the times map of ln 109
 		int foundKey = 0;
-		for (Map.Entry<Integer, Integer> entry : costs.entrySet()) {
-			if(entry.getValue().equals(sortedCosts.get(contracts.length-1))) {
+		for (Map.Entry<Integer, Integer> entry : times.entrySet()) {
+			if(entry.getValue().equals(sortedTimes.get(contracts.length-1))) {
 				foundKey = entry.getKey();
 				break;
 			}
@@ -133,9 +133,9 @@ public class CustomerAgent extends Agent {
 	}
 	
 	private int evaluateNEW(int[] solution) {
-		if(evaluatedCosts.containsKey(solution))
+		if(evaluatedTimes.containsKey(solution))
 		{
-			return evaluatedCosts.get(solution);
+			return evaluatedTimes.get(solution);
 		}
 		else
 		{
@@ -182,9 +182,9 @@ public class CustomerAgent extends Agent {
 //			}
 //			System.out.println();
 //		}
-			int costValue = start[last][anzM-1]+timeMatrix[last][anzM-1];
-			evaluatedCosts.put(solution, costValue);
-			return (costValue);
+			int timeValue = start[last][anzM-1]+timeMatrix[last][anzM-1];
+			evaluatedTimes.put(solution, timeValue);
+			return (timeValue);
 		}
 	}
 
