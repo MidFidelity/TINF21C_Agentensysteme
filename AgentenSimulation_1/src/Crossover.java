@@ -48,7 +48,55 @@ public class Crossover {
         return new int[][] {child1, child2};
     }
 
-    public static int[][] cxPartiallyMapped(int[] parent1, int[] parent2){
-        return null;
+    public static int[][] cxPartiallyMapped(int[] parent1, int[] parent2) {
+        int[] child1 = new int[parent1.length];
+        int[] child2 = new int[parent2.length];
+        assert child1.length == child2.length;
+
+        int length = child1.length;
+
+        Random rand = new Random();
+
+        int start_index = rand.nextInt(length - 2);
+        int end_index = rand.nextInt(start_index + 1, length);
+
+        System.arraycopy(parent1, start_index, child2, start_index, end_index - start_index);
+        System.arraycopy(parent2, start_index, child1, start_index, end_index - start_index);
+
+        ArrayList<Integer> lChild1 = new ArrayList<>(Arrays.stream(child1).boxed().toList());
+        ArrayList<Integer> lChild2 = new ArrayList<>(Arrays.stream(child2).boxed().toList());
+
+        for (int i = 0; i < length; i++) {
+            Integer target = parent1[i];
+            int target_index = lChild2.indexOf(target);
+            if (target_index != -1) {
+                lChild2.set(i, findReplacement(lChild1, lChild2, target_index));
+            } else {
+                lChild2.set(i, parent1[i]);
+            }
+        }
+
+        for (int i = 0; i < length; i++) {
+            Integer target = parent2[i];
+            int target_index = lChild1.indexOf(target);
+            if (target_index != -1) {
+                lChild1.set(i, findReplacement(lChild2, lChild1, target_index));
+            } else {
+                lChild1.set(i, parent2[i]);
+            }
+        }
+
+        return new int[][]{lChild1.stream().mapToInt(i -> i).toArray(), lChild2.stream().mapToInt(i -> i).toArray()};
     }
+
+    private static Integer findReplacement(ArrayList<Integer> lChild1, ArrayList<Integer> lChild2, int index) {
+        Integer target = lChild1.get(index);
+        int target_index;
+        if ((target_index = lChild2.indexOf(target)) != -1) {
+            return findReplacement(lChild2, lChild1, target_index);
+        } else {
+            return target;
+        }
+    }
+
 }
