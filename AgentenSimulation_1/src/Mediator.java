@@ -28,14 +28,6 @@ public class Mediator {
 		return contracts;
 	}
 
-	public int[][] crossover(){
-
-	}
-
-	public int[][] mutate(){
-
-	}
-
 	public int[] constructProposal(int[] contract) {
 		int[] proposal = new int[contractSize];
 		for(int i=0;i<proposal.length;i++)proposal[i] = contract[i];
