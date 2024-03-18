@@ -27,7 +27,7 @@ import java.util.*;
 public class Verhandlung {
 
     private static final int generationsSize = 100;
-    private static final int maxGenerations = 100;
+    private static final int maxGenerations = 5000;
 
     public static void main(String[] args) {
         int[][] generation;
@@ -47,8 +47,11 @@ public class Verhandlung {
             generation = med.initContract();
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
+                System.out.print(currentGeneration + ": ");
                 boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
+                System.out.print("  ");
                 boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
+                System.out.print("  ");
                 ArrayList<int[]> intersect = new ArrayList<>();
 
                 for (int i = 0; i < currentAcceptanceAmount; i++) {
@@ -63,6 +66,14 @@ public class Verhandlung {
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
                 }
                 Collections.shuffle(intersect);
+
+                System.out.print(intersect.size());
+                System.out.print("  First Intersect: ");
+                agA.printUtility(intersect.getFirst());
+                System.out.print("  ");
+                agB.printUtility(intersect.getFirst());
+                System.out.println();
+
                 int currentNewGenerationCount = 0;
                 while (currentNewGenerationCount < (generationsSize - currentInfill) && intersect.size() >= 2) {
                     int[] parent1 = intersect.removeLast();
@@ -86,8 +97,8 @@ public class Verhandlung {
                 }
 
                 //If not enough contract fill with random
-                if (currentNewGenerationCount<maxGenerations){
-                    int[][] newRandom = med.getRandomContracts(maxGenerations-currentNewGenerationCount);
+                if (currentNewGenerationCount<generationsSize){
+                    int[][] newRandom = med.getRandomContracts(generationsSize-currentNewGenerationCount);
                     //System.arraycopy(newGeneration, currentNewGenerationCount, newRandom, 0, newRandom.length);
                     System.arraycopy(newRandom, 0, newGeneration, currentNewGenerationCount, newRandom.length);
                 }
