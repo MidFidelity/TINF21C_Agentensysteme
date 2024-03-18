@@ -1,5 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.HashMap;
 import java.util.Scanner;
 
 public class CustomerAgent extends Agent {
@@ -32,9 +33,9 @@ public class CustomerAgent extends Agent {
 			return false;
 	}
 
-	public abstract boolean[] voteLoop (int[][] contracts, int acceptanceAmount){
+	public boolean[] voteLoop (int[][] contracts, int acceptanceAmount){
 		int[][] clonedContracts = contracts;
-		boolean[] results;
+		boolean[] results = new boolean[contracts.length];
 		//iterate over all the rows and check if one contract is better than the other, if so the better contract moves to the left
 		//bubblesort (?)
 		for(int rowsA=0;rowsA<contracts.length;rowsA++) {
@@ -68,7 +69,13 @@ public class CustomerAgent extends Agent {
 		return results;
 	}
 
-	
+	@Override
+	public int voteEnd(int[][] contracts) {
+		//TODO
+		return 0;
+	}
+
+
 	public int getContractSize() {
 		return timeMatrix.length;
 	}

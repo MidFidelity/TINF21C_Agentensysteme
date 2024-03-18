@@ -33,6 +33,18 @@ public class SupplierAgent extends Agent {
 		return costMatrix.length;
 	}
 
+	@Override
+	public boolean[] voteLoop(int[][] contracts, int acceptanceAmount) {
+		//TODO
+		return new boolean[0];
+	}
+
+	@Override
+	public int voteEnd(int[][] contracts) {
+		//TODO
+		return 0;
+	}
+
 	public void printUtility(int[] contract) {
 		System.out.print(evaluate(contract));
 	}
