@@ -1,6 +1,7 @@
 import java.io.*;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -27,6 +28,26 @@ public class Mediator {
 
 		return contracts;
 	}
+
+	public int[][] getRandomContracts(int count){
+		int[][] contracts = new int[count][contractSize];
+		List<Integer> contract = IntStream.range(0,contractSize).boxed().collect(Collectors.toList());
+		for (int i = 0; i < count; i++) {
+			Collections.shuffle(contract);
+			contracts[i] = contract.stream().mapToInt(Integer::intValue).toArray();
+		}
+		return contracts;
+	}
+
+	public int[] mutation (int[] contract){
+		Random rand = new Random();
+		int start = rand.nextInt((contract.length-1));
+		int end = start+1;
+		int temp = contract[start];
+		contract[start] = contract[end];
+		contract[end] = temp;
+        return contract;
+    }
 
 	public int[] constructProposal(int[] contract) {
 		int[] proposal = new int[contractSize];
