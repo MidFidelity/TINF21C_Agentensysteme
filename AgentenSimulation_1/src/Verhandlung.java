@@ -1,9 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 
 //SIMULATION!
@@ -80,7 +77,21 @@ public class Verhandlung {
                     currentNewGenerationCount += 4;
                 }
 
-                //TODO fill with mutation
+                //fill with mutation
+                Random rand = new Random();
+                for (int i = 0; i < currentInfill; i++) {
+                    int contractIndexToMutate = rand.nextInt(currentNewGenerationCount);
+                    newGeneration[currentNewGenerationCount] = med.mutation(newGeneration[contractIndexToMutate]);
+                    currentNewGenerationCount++;
+                }
+
+                //If not enough contract fill with random
+                if (currentNewGenerationCount<maxGenerations){
+                    int[][] newRandom = med.getRandomContracts(maxGenerations-currentNewGenerationCount);
+                    //System.arraycopy(newGeneration, currentNewGenerationCount, newRandom, 0, newRandom.length);
+                    System.arraycopy(newRandom, 0, newGeneration, currentNewGenerationCount, newRandom.length);
+                }
+
 
                 //reevaluate
                 generation = newGeneration;
