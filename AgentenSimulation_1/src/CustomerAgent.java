@@ -52,7 +52,7 @@ public class CustomerAgent extends Agent {
 			}
 		});
 
-		System.out.print(costs.entrySet().iterator().next().getValue());
+		System.out.print(times.entrySet().iterator().next().getValue());
 		return result;
 	}
 

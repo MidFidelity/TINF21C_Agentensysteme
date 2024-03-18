@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.stream.IntStream;
 
 
 //SIMULATION!
@@ -26,14 +27,14 @@ import java.util.*;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 100;
-    private static final int maxGenerations = 5000;
+    private static final int generationsSize = 500;
+    private static final int maxGenerations = 2000;
 
     public static void main(String[] args) {
         int[][] generation;
         Agent agA, agB;
         Mediator med;
-        int currentAcceptanceAmount = 60;
+        int currentAcceptanceAmount = 400;
         int currentInfill = 8;    //must be divisible by 4
         assert currentInfill % 4 == 0;
 
@@ -107,6 +108,33 @@ public class Verhandlung {
                 //reevaluate
                 generation = newGeneration;
             }
+            System.out.println("----------");
+            System.out.println("Changing to Terminal Phase");
+            System.out.println("----------");
+
+            while (generation.length > 1){
+                int remove;
+                if(generation.length%2 == 0){
+                    remove = agA.voteEnd(generation);
+                }else {
+                    remove = agB.voteEnd(generation);
+                }
+
+                int[][] newGeneration = new int[generation.length-1][med.contractSize];
+                System.arraycopy(generation, 0, newGeneration, 0, remove);
+                System.arraycopy(generation, remove + 1,
+                        newGeneration, remove,
+                        generation.length - remove - 1);
+                generation = newGeneration;
+            }
+            System.out.println("Final Resolution:");
+            agA.printUtility(generation[0]);
+            System.out.print("  ");
+            agB.printUtility(generation[0]);
+            System.out.println();
+
+
+
         } catch (FileNotFoundException e) {
             System.out.println(e.getMessage());
         }
