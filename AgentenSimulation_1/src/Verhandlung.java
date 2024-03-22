@@ -27,15 +27,16 @@ import java.util.stream.IntStream;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 500;
-    private static final int maxGenerations = 2000;
+    private static final int generationsSize = 1000;
+    private static final int maxGenerations = 3000;
 
     public static void main(String[] args) {
         int[][] generation;
         Agent agA, agB;
         Mediator med;
-        int currentAcceptanceAmount = 400;
-        int currentInfill = 8;    //must be divisible by 4
+        int currentAcceptanceAmount = (int)(generationsSize * 0.77);
+        int currentInfill = (int) (generationsSize*0.1);    //must be divisible by 4
+        int mutationAmount = (int) (generationsSize*0.1); //equal 10%
         assert currentInfill % 4 == 0;
 
 
@@ -48,16 +49,21 @@ public class Verhandlung {
             generation = med.initContract();
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
+                long startTime = System.nanoTime();
                 System.out.print(currentGeneration + ": ");
                 boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
                 System.out.print("  ");
                 boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
                 System.out.print("  ");
+                long voteTime = System.nanoTime() - startTime;
                 ArrayList<int[]> intersect = new ArrayList<>();
+                ArrayList<int[]> singleVote = new ArrayList<>();
 
                 for (int i = 0; i < currentAcceptanceAmount; i++) {
                     if (voteA[i] && voteB[i]) {
                         intersect.add(generation[i]);
+                    } else if (voteA[i] || voteB[i]) {
+                        singleVote.add(generation[i]);
                     }
                 }
 
@@ -67,15 +73,17 @@ public class Verhandlung {
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
                 }
                 Collections.shuffle(intersect);
+                Collections.shuffle(singleVote);
 
                 System.out.print(intersect.size());
-                System.out.print("  First Intersect: ");
+                System.out.print("  One Intersect: ");
                 agA.printUtility(intersect.getFirst());
                 System.out.print("  ");
                 agB.printUtility(intersect.getFirst());
-                System.out.println();
+
 
                 int currentNewGenerationCount = 0;
+                //first use intersect (both want it)
                 while (currentNewGenerationCount < (generationsSize - currentInfill) && intersect.size() >= 2) {
                     int[] parent1 = intersect.removeLast();
                     int[] parent2 = intersect.removeLast();
@@ -89,13 +97,18 @@ public class Verhandlung {
                     currentNewGenerationCount += 4;
                 }
 
-                //fill with mutation
-                Random rand = new Random();
-                for (int i = 0; i < currentInfill; i++) {
-                    int contractIndexToMutate = rand.nextInt(currentNewGenerationCount);
-                    newGeneration[currentNewGenerationCount] = med.mutation(newGeneration[contractIndexToMutate]);
-                    currentNewGenerationCount++;
+                //use the one only one wants
+                while (currentNewGenerationCount < (generationsSize-1) && singleVote.size() >= 2) {
+                    int[] parent1 = singleVote.removeLast();
+                    int[] parent2 = singleVote.removeLast();
+                    int[][] childs = Crossover.cxOrdered(parent1, parent2);
+
+                    newGeneration[currentNewGenerationCount] = childs[0];
+                    newGeneration[currentNewGenerationCount + 1] = childs[1];
+
+                    currentNewGenerationCount += 1;
                 }
+
 
                 //If not enough contract fill with random
                 if (currentNewGenerationCount<generationsSize){
@@ -104,9 +117,20 @@ public class Verhandlung {
                     System.arraycopy(newRandom, 0, newGeneration, currentNewGenerationCount, newRandom.length);
                 }
 
+                // Mutate
+                Random rand = new Random();
+                for (int i = 0; i < mutationAmount; i++) {
+                    int contractIndexToMutate = rand.nextInt(generationsSize);
+                    newGeneration[contractIndexToMutate] = med.mutation(newGeneration[contractIndexToMutate]);
+                    currentNewGenerationCount++;
+                }
+
 
                 //reevaluate
                 generation = newGeneration;
+
+                long mediatorTime = System.nanoTime() - startTime - voteTime;
+                System.out.println("   Time:" + voteTime + "  " + mediatorTime);
             }
             System.out.println("----------");
             System.out.println("Changing to Terminal Phase");
