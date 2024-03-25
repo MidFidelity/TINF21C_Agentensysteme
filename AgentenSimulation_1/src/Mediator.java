@@ -18,36 +18,27 @@ public class Mediator {
 		this.generationSize = generationSize;
 	}
 	
-	public int[][] initContract(){
-		int[][] contracts = new int[generationSize][contractSize];
+	public Contract[] initContract(){
+		Contract[] contracts = new Contract[generationSize];
+
 		List<Integer> contract = IntStream.range(0,contractSize).boxed().collect(Collectors.toList());
 		for (int i = 0; i <generationSize; i++) {
 			Collections.shuffle(contract);
-			contracts[i] = contract.stream().mapToInt(Integer::intValue).toArray();
+			contracts[i] = new Contract(contract.stream().mapToInt(Integer::intValue).toArray());
 		}
 
 		return contracts;
 	}
 
-	public int[][] getRandomContracts(int count){
-		int[][] contracts = new int[count][contractSize];
+	public Contract[] getRandomContracts(int count){
+		Contract[] contracts = new Contract[count];
 		List<Integer> contract = IntStream.range(0,contractSize).boxed().collect(Collectors.toList());
 		for (int i = 0; i < count; i++) {
 			Collections.shuffle(contract);
-			contracts[i] = contract.stream().mapToInt(Integer::intValue).toArray();
+			contracts[i] = new Contract(contract.stream().mapToInt(Integer::intValue).toArray());
 		}
 		return contracts;
 	}
-
-	public int[] mutation (int[] contract){
-		Random rand = new Random();
-		int start = rand.nextInt((contract.length-1));
-		int end = start+1;
-		int temp = contract[start];
-		contract[start] = contract[end];
-		contract[end] = temp;
-        return contract;
-    }
 
 	public int[] constructProposal(int[] contract) {
 		int[] proposal = new int[contractSize];

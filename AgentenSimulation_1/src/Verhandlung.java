@@ -2,7 +2,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 
 //SIMULATION!
@@ -32,7 +31,7 @@ public class Verhandlung {
     private static final int maxGenerations = 1000;
 
     public static void main(String[] args) {
-        int[][] generation;
+        Contract[] generation;
         Agent agA, agB;
         Mediator med;
         int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
@@ -61,8 +60,8 @@ public class Verhandlung {
                 boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
                 System.out.print("  ");
                 long voteTime = System.nanoTime() - startTime;
-                ArrayList<int[]> intersect = new ArrayList<>();
-                ArrayList<int[]> singleVote = new ArrayList<>();
+                ArrayList<Contract> intersect = new ArrayList<>();
+                ArrayList<Contract> singleVote = new ArrayList<>();
 
 
                 for (int i = 0; i < generationsSize; i++) {
@@ -84,7 +83,7 @@ public class Verhandlung {
                 }
                  */
 
-                int[][] newGeneration = new int[generationsSize][med.contractSize];
+                Contract[] newGeneration = new Contract[generationsSize];
                 if (intersect.isEmpty()) {
                     //TODO
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
@@ -102,9 +101,9 @@ public class Verhandlung {
                 int currentNewGenerationCount = 0;
                 //first use intersect (both want it)
                 while (currentNewGenerationCount < (generationsSize - currentInfill) && intersect.size() >= 2) {
-                    int[] parent1 = intersect.removeLast();
-                    int[] parent2 = intersect.removeLast();
-                    int[][] childs = Crossover.cxOrdered(parent1, parent2);
+                    Contract parent1 = intersect.removeLast();
+                    Contract parent2 = intersect.removeLast();
+                    Contract[] childs = Crossover.cxOrdered(parent1, parent2);
 
 
                     newGeneration[currentNewGenerationCount] = childs[0];
@@ -116,28 +115,27 @@ public class Verhandlung {
                 }
 
                 List<Contract> newGenerationList = new ArrayList<>();
-                newGenerationList.addAll(Arrays.stream(Arrays.copyOfRange(newGeneration, 0, currentNewGenerationCount)).map(Contract::new).toList());
+                newGenerationList.addAll(List.of(Arrays.copyOfRange(newGeneration, 0, currentNewGenerationCount)));
 
                 newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
 
                 while (newGenerationList.size() < generationsSize) {
                     //If not enough contract fill with random
 
-                    int[] newRandom = med.getRandomContracts(1)[0];
+                    Contract newRandom = med.getRandomContracts(1)[0];
                     //System.arraycopy(newGeneration, currentNewGenerationCount, newRandom, 0, newRandom.length);
-                    newGenerationList.add(new Contract(newRandom));
+                    newGenerationList.add(newRandom);
 
                     newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
                 }
 
-                newGeneration = newGenerationList.stream().map(Contract::getContract).toArray(size -> new int[size][med.contractSize]);
+                newGeneration = newGenerationList.toArray(Contract[]::new);
 
                 // Mutate
                 Random rand = new Random();
                 for (int i = 0; i < mutationAmount; i++) {
                     int contractIndexToMutate = rand.nextInt(generationsSize);
-                    newGeneration[contractIndexToMutate] = med.mutation(newGeneration[contractIndexToMutate]);
-                    currentNewGenerationCount++;
+                    newGeneration[contractIndexToMutate].mutate();
                 }
 
                 //reevaluate
@@ -153,7 +151,7 @@ public class Verhandlung {
 
             boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
             boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
-            ArrayList<int[]> intersect = new ArrayList<>();
+            ArrayList<Contract> intersect = new ArrayList<>();
 
             for (int i = 0; i < generationsSize; i++) {
                 if (voteA[i] && voteB[i]) {
@@ -161,7 +159,7 @@ public class Verhandlung {
                 }
             }
 
-            int[][] temp = new int[intersect.size()][med.contractSize];
+            Contract[] temp = new Contract[intersect.size()];
             generation = intersect.toArray(temp);
 
             while (generation.length > 1) {
@@ -172,7 +170,7 @@ public class Verhandlung {
                     remove = agB.voteEnd(generation);
                 }
 
-                int[][] newGeneration = new int[generation.length - 1][med.contractSize];
+                Contract[] newGeneration = new Contract[generation.length-1];
                 System.arraycopy(generation, 0, newGeneration, 0, remove);
                 System.arraycopy(generation, remove + 1,
                         newGeneration, remove,
@@ -192,7 +190,7 @@ public class Verhandlung {
         }
     }
 
-    public static void ausgabe(Agent a1, Agent a2, int i, int[] contract) {
+    public static void ausgabe(Agent a1, Agent a2, int i, Contract contract) {
         System.out.print(i + " -> ");
         a1.printUtility(contract);
         System.out.print("  ");

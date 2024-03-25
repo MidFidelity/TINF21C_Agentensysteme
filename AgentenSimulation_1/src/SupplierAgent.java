@@ -8,7 +8,7 @@ public class SupplierAgent extends Agent {
     private final int[][] costMatrix;
     private final Object mutexEvaluatedCosts = new Object();
 
-    HashMap<int[], Integer> evaluatedCosts = new HashMap<>();
+    HashMap<Contract, Integer> evaluatedCosts = new HashMap<>();
 
     public SupplierAgent(File file) throws FileNotFoundException {
 
@@ -24,7 +24,7 @@ public class SupplierAgent extends Agent {
         scanner.close();
     }
 
-    public boolean vote(int[] contract, int[] proposal) {
+    public boolean vote(Contract contract, Contract proposal) {
         int costContract = evaluate(contract);
         int costProposal = evaluate(proposal);
         if (costProposal < costContract)
@@ -38,8 +38,8 @@ public class SupplierAgent extends Agent {
     }
 
     @Override
-    public boolean[] voteLoop(int[][] contracts, final int acceptanceAmount) {
-        // Fill the array
+    public boolean[] voteLoop(Contract[] contracts, final int acceptanceAmount) {
+        // Fill the list
         List<AgentIndexContract> temp = new ArrayList<>();
         for (int i = 0; i < contracts.length; i++) {
             temp.add(new AgentIndexContract(i, contracts[i]));
@@ -48,7 +48,7 @@ public class SupplierAgent extends Agent {
         //Calculate using multiprocessing
         Stream<AgentIndexContract> stream = temp.parallelStream();
         stream.forEach(i -> {
-            i.costs = evaluate(i.contracts);
+            i.costs = evaluate(i);
         });
 
         // Sort it
@@ -99,7 +99,7 @@ public class SupplierAgent extends Agent {
     }
 
     @Override
-    public int voteEnd(int[][] contracts) {
+    public int voteEnd(Contract[] contracts) {
         //calculation of costs of given contracts
         Map<Integer, Integer> costs = new LinkedHashMap<>();
         for (int i = 0; i < contracts.length; i++) {
@@ -118,22 +118,22 @@ public class SupplierAgent extends Agent {
         return foundKey;
     }
 
-    public void printUtility(int[] contract) {
+    public void printUtility(Contract contract) {
         System.out.print(evaluate(contract));
     }
 
 
-    private int evaluate(int[] contract) {
+    private int evaluate(Contract contract) {
         synchronized (mutexEvaluatedCosts) {
             if (evaluatedCosts.containsKey(contract)) {
                 return evaluatedCosts.get(contract);
             }
         }
-
+        int[] contractArr = contract.getContract();
         int result = 0;
-        for (int i = 0; i < contract.length - 1; i++) {
-            int zeile = contract[i];
-            int spalte = contract[i + 1];
+        for (int i = 0; i < contractArr.length - 1; i++) {
+            int zeile = contractArr[i];
+            int spalte = contractArr[i + 1];
             result += costMatrix[zeile][spalte];
         }
         synchronized (mutexEvaluatedCosts) {
