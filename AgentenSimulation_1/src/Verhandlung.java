@@ -144,8 +144,8 @@ public class Verhandlung {
 //                }
 
 
-                List<int[]> newGenerationList = new ArrayList<>();
-                newGenerationList.addAll(Arrays.asList(Arrays.copyOfRange(newGeneration, 0, currentNewGenerationCount)));
+                List<Contract> newGenerationList = new ArrayList<>();
+                newGenerationList.addAll(Arrays.stream(Arrays.copyOfRange(newGeneration, 0, currentNewGenerationCount)).map(Contract::new).toList());
 
                 newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
 
@@ -154,12 +154,12 @@ public class Verhandlung {
 
                     int[] newRandom = med.getRandomContracts(1)[0];
                     //System.arraycopy(newGeneration, currentNewGenerationCount, newRandom, 0, newRandom.length);
-                    newGenerationList.add(newRandom);
+                    newGenerationList.add(new Contract(newRandom));
 
                     newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
                 }
 
-                newGeneration = newGenerationList.toArray(newGeneration);
+                newGeneration = newGenerationList.stream().map(Contract::getContract).toArray(size->new int[size][med.contractSize]);
 
                 // Mutate
                 Random rand = new Random();
