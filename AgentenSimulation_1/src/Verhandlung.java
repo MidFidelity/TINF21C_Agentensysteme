@@ -37,7 +37,7 @@ public class Verhandlung {
         Mediator med;
         int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
         int currentInfill = (int) (generationsSize * 0.1);
-        int mutationAmount = (int) (generationsSize * 0.3);
+        int mutationAmount = (int) (generationsSize * 0.1);
 
 
         try {
@@ -49,8 +49,9 @@ public class Verhandlung {
             generation = med.initContract();
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
-                currentAcceptanceAmount = Math.max((int) (generationsSize * 0.15), (int) (generationsSize * (1 - ((double) currentGeneration / maxGenerations))));
-                //mutationAmount = Math.min((int) (generationsSize * 0.5), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
+                currentAcceptanceAmount = Math.max((int) (generationsSize * 0.15), (int) (generationsSize * (1 - (((double) currentGeneration / maxGenerations))*1.3)));
+                //mutationAmount = Math.min((int) (generationsSize * ), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
+                //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
 
                 long startTime = System.nanoTime();
@@ -91,22 +92,6 @@ public class Verhandlung {
                 Collections.shuffle(intersect);
                 Collections.shuffle(singleVote);
 
-                /*
-                // Calculate new intersect ammount
-                System.out.print("  ");
-                double temp = (double) intersect.size() / currentAcceptanceAmount;
-                if(temp > 0.2 || temp > (double) currentAcceptanceAmount / generationsSize){
-                    currentAcceptanceAmount = (int) (generationsSize*temp);
-                }
-
-                System.out.printf("%2f", temp);
-                System.out.print(" ");
-                System.out.print(currentAcceptanceAmount);
-                System.out.print("  ");
-
-                 */
-
-
                 System.out.print(intersect.size());
                 System.out.print("  One Intersect: ");
                 agA.printUtility(intersect.getFirst());
@@ -130,20 +115,6 @@ public class Verhandlung {
                     currentNewGenerationCount += 4;
                 }
 
-
-                //use the one only one wants
-//                while (currentNewGenerationCount < (generationsSize) && singleVote.size() >= 2) {
-//                    int[] parent1 = singleVote.removeLast();
-//                    int[] parent2 = singleVote.removeLast();
-//                    int[][] childs = Crossover.cxOrdered(parent1, parent2);
-//
-//                    newGeneration[currentNewGenerationCount] = childs[0];
-//                    newGeneration[currentNewGenerationCount + 1] = childs[1];
-//
-//                    currentNewGenerationCount += 2;
-//                }
-
-
                 List<Contract> newGenerationList = new ArrayList<>();
                 newGenerationList.addAll(Arrays.stream(Arrays.copyOfRange(newGeneration, 0, currentNewGenerationCount)).map(Contract::new).toList());
 
@@ -159,7 +130,7 @@ public class Verhandlung {
                     newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
                 }
 
-                newGeneration = newGenerationList.stream().map(Contract::getContract).toArray(size->new int[size][med.contractSize]);
+                newGeneration = newGenerationList.stream().map(Contract::getContract).toArray(size -> new int[size][med.contractSize]);
 
                 // Mutate
                 Random rand = new Random();
