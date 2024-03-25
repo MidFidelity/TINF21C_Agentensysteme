@@ -48,18 +48,18 @@ public class SupplierAgent extends Agent {
         //Calculate using multiprocessing
         Stream<AgentIndexContract> stream = temp.parallelStream();
         stream.forEach(i -> {
-            i.costs = evaluate(i);
+            i.setCost(evaluate(i));
         });
 
         // Sort it
-        temp.sort(Comparator.comparingInt(a -> a.costs));
+        temp.sort(Comparator.comparingInt(a -> a.getCost()));
 
         boolean[] result = new boolean[contracts.length];
         for (int i = 0; i < acceptanceAmount; i++) {
-            result[temp.get(i).index] = true;
+            result[temp.get(i).getIndex()] = true;
         }
 
-        System.out.print(temp.getFirst().costs);
+        System.out.print(temp.getFirst().getCost());
         return result;
 
 /*

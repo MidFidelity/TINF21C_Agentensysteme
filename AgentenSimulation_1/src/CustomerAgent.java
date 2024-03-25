@@ -1,7 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class CustomerAgent extends Agent {
@@ -46,18 +45,18 @@ public class CustomerAgent extends Agent {
 		//Calculate using multiprocessing
 		Stream<AgentIndexContract> stream = temp.parallelStream();
 		stream.forEach(i -> {
-			i.costs = evaluateNEW(i);
+			i.setCost(evaluateNEW(i));
 		});
 
 		// Sort it
-		temp.sort(Comparator.comparingInt(a -> a.costs));
+		temp.sort(Comparator.comparingInt(a -> a.getCost()));
 
 		boolean[] result = new boolean[contracts.length];
 		for (int i = 0; i < acceptanceAmount; i++) {
-			result[temp.get(i).index] = true;
+			result[temp.get(i).getIndex()] = true;
 		}
 
-		System.out.print(temp.getFirst().costs);
+		System.out.print(temp.getFirst().getCost());
 		return result;
 		/*
 		Map<Integer, Integer> times = new LinkedHashMap<>();
