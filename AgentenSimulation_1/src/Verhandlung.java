@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
@@ -28,15 +29,15 @@ import java.util.stream.IntStream;
 public class Verhandlung {
 
     private static final int generationsSize = 500;
-    private static final int maxGenerations = 4000;
+    private static final int maxGenerations = 1000;
 
     public static void main(String[] args) {
         int[][] generation;
         Agent agA, agB;
         Mediator med;
-        int currentAcceptanceAmount = (int)(generationsSize * 0.77);//0.77
-        int currentInfill = (int) (generationsSize*0.1);
-        int mutationAmount = (int) (generationsSize*0.1);
+        int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
+        int currentInfill = (int) (generationsSize * 0.1);
+        int mutationAmount = (int) (generationsSize * 0.3);
 
 
         try {
@@ -48,6 +49,10 @@ public class Verhandlung {
             generation = med.initContract();
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
+                currentAcceptanceAmount = Math.max((int) (generationsSize * 0.15), (int) (generationsSize * (1 - ((double) currentGeneration / maxGenerations))));
+                //mutationAmount = Math.min((int) (generationsSize * 0.5), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
+
+
                 long startTime = System.nanoTime();
                 System.out.print(currentGeneration + ": ");
                 boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
@@ -58,7 +63,7 @@ public class Verhandlung {
                 ArrayList<int[]> intersect = new ArrayList<>();
                 ArrayList<int[]> singleVote = new ArrayList<>();
 
-                
+
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteA[i] && voteB[i]) {
                         intersect.add(generation[i]);
@@ -100,7 +105,7 @@ public class Verhandlung {
                 System.out.print("  ");
 
                  */
-                
+
 
                 System.out.print(intersect.size());
                 System.out.print("  One Intersect: ");
@@ -127,24 +132,34 @@ public class Verhandlung {
 
 
                 //use the one only one wants
-                while (currentNewGenerationCount < (generationsSize) && singleVote.size() >= 2) {
-                    int[] parent1 = singleVote.removeLast();
-                    int[] parent2 = singleVote.removeLast();
-                    int[][] childs = Crossover.cxOrdered(parent1, parent2);
+//                while (currentNewGenerationCount < (generationsSize) && singleVote.size() >= 2) {
+//                    int[] parent1 = singleVote.removeLast();
+//                    int[] parent2 = singleVote.removeLast();
+//                    int[][] childs = Crossover.cxOrdered(parent1, parent2);
+//
+//                    newGeneration[currentNewGenerationCount] = childs[0];
+//                    newGeneration[currentNewGenerationCount + 1] = childs[1];
+//
+//                    currentNewGenerationCount += 2;
+//                }
 
-                    newGeneration[currentNewGenerationCount] = childs[0];
-                    newGeneration[currentNewGenerationCount + 1] = childs[1];
 
-                    currentNewGenerationCount += 2;
-                }
+                List<int[]> newGenerationList = new ArrayList<>();
+                newGenerationList.addAll(Arrays.asList(Arrays.copyOfRange(newGeneration, 0, currentNewGenerationCount)));
 
+                newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
 
-                //If not enough contract fill with random
-                if (currentNewGenerationCount<generationsSize){
-                    int[][] newRandom = med.getRandomContracts(generationsSize-currentNewGenerationCount);
+                while (newGenerationList.size() < generationsSize) {
+                    //If not enough contract fill with random
+
+                    int[] newRandom = med.getRandomContracts(1)[0];
                     //System.arraycopy(newGeneration, currentNewGenerationCount, newRandom, 0, newRandom.length);
-                    System.arraycopy(newRandom, 0, newGeneration, currentNewGenerationCount, newRandom.length);
+                    newGenerationList.add(newRandom);
+
+                    newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
                 }
+
+                newGeneration = newGenerationList.toArray(newGeneration);
 
                 // Mutate
                 Random rand = new Random();
@@ -154,38 +169,51 @@ public class Verhandlung {
                     currentNewGenerationCount++;
                 }
 
-
                 //reevaluate
                 generation = newGeneration;
 
                 long mediatorTime = System.nanoTime() - startTime - voteTime;
                 System.out.println("   Time:" + voteTime + "  " + mediatorTime);
             }
+
             System.out.println("----------");
             System.out.println("Changing to Terminal Phase");
             System.out.println("----------");
 
-            while (generation.length > 1){
+            boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
+            boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
+            ArrayList<int[]> intersect = new ArrayList<>();
+
+            for (int i = 0; i < generationsSize; i++) {
+                if (voteA[i] && voteB[i]) {
+                    intersect.add(generation[i]);
+                }
+            }
+
+            int[][] temp = new int[intersect.size()][med.contractSize];
+            generation = intersect.toArray(temp);
+
+            while (generation.length > 1) {
                 int remove;
-                if(generation.length%2 == 0){
+                if (generation.length % 2 == 0) {
                     remove = agA.voteEnd(generation);
-                }else {
+                } else {
                     remove = agB.voteEnd(generation);
                 }
 
-                int[][] newGeneration = new int[generation.length-1][med.contractSize];
+                int[][] newGeneration = new int[generation.length - 1][med.contractSize];
                 System.arraycopy(generation, 0, newGeneration, 0, remove);
                 System.arraycopy(generation, remove + 1,
                         newGeneration, remove,
                         generation.length - remove - 1);
                 generation = newGeneration;
             }
+            System.out.println();
             System.out.println("Final Resolution:");
             agA.printUtility(generation[0]);
             System.out.print("  ");
             agB.printUtility(generation[0]);
             System.out.println();
-
 
 
         } catch (FileNotFoundException e) {
