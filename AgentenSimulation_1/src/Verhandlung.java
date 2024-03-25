@@ -27,17 +27,16 @@ import java.util.stream.IntStream;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 300;
-    private static final int maxGenerations = 5000;
+    private static final int generationsSize = 500;
+    private static final int maxGenerations = 4000;
 
     public static void main(String[] args) {
         int[][] generation;
         Agent agA, agB;
         Mediator med;
-        int currentAcceptanceAmount = (int)(generationsSize * 0.77);
-        int currentInfill = (int) (generationsSize*0.1);    //must be divisible by 4
-        int mutationAmount = (int) (generationsSize*0.1); //equal 10%
-        assert currentInfill % 4 == 0;
+        int currentAcceptanceAmount = (int)(generationsSize * 0.77);//0.77
+        int currentInfill = (int) (generationsSize*0.1);
+        int mutationAmount = (int) (generationsSize*0.1);
 
 
         try {
@@ -59,13 +58,25 @@ public class Verhandlung {
                 ArrayList<int[]> intersect = new ArrayList<>();
                 ArrayList<int[]> singleVote = new ArrayList<>();
 
-                for (int i = 0; i < currentAcceptanceAmount; i++) {
+                
+                for (int i = 0; i < generationsSize; i++) {
                     if (voteA[i] && voteB[i]) {
                         intersect.add(generation[i]);
                     } else if (voteA[i] || voteB[i]) {
                         singleVote.add(generation[i]);
                     }
                 }
+
+                 /*
+                for (int i = 0; i < generationsSize; i++) {
+                    if (voteB[i]) {
+                        intersect.add(generation[i]);
+                    } else if (voteA[i]) {
+                        singleVote.add(generation[i]);
+
+                    }
+                }
+                 */
 
                 int[][] newGeneration = new int[generationsSize][med.contractSize];
                 if (intersect.isEmpty()) {
@@ -74,6 +85,22 @@ public class Verhandlung {
                 }
                 Collections.shuffle(intersect);
                 Collections.shuffle(singleVote);
+
+                /*
+                // Calculate new intersect ammount
+                System.out.print("  ");
+                double temp = (double) intersect.size() / currentAcceptanceAmount;
+                if(temp > 0.2 || temp > (double) currentAcceptanceAmount / generationsSize){
+                    currentAcceptanceAmount = (int) (generationsSize*temp);
+                }
+
+                System.out.printf("%2f", temp);
+                System.out.print(" ");
+                System.out.print(currentAcceptanceAmount);
+                System.out.print("  ");
+
+                 */
+                
 
                 System.out.print(intersect.size());
                 System.out.print("  One Intersect: ");
@@ -89,16 +116,18 @@ public class Verhandlung {
                     int[] parent2 = intersect.removeLast();
                     int[][] childs = Crossover.cxOrdered(parent1, parent2);
 
-                    newGeneration[currentNewGenerationCount] = parent1;
-                    newGeneration[currentNewGenerationCount + 1] = parent2;
-                    newGeneration[currentNewGenerationCount + 2] = childs[0];
-                    newGeneration[currentNewGenerationCount + 3] = childs[1];
+
+                    newGeneration[currentNewGenerationCount] = childs[0];
+                    newGeneration[currentNewGenerationCount + 1] = childs[1];
+                    newGeneration[currentNewGenerationCount + 2] = parent1;
+                    newGeneration[currentNewGenerationCount + 3] = parent2;
 
                     currentNewGenerationCount += 4;
                 }
 
+
                 //use the one only one wants
-                while (currentNewGenerationCount < (generationsSize-1) && singleVote.size() >= 2) {
+                while (currentNewGenerationCount < (generationsSize) && singleVote.size() >= 2) {
                     int[] parent1 = singleVote.removeLast();
                     int[] parent2 = singleVote.removeLast();
                     int[][] childs = Crossover.cxOrdered(parent1, parent2);
@@ -106,7 +135,7 @@ public class Verhandlung {
                     newGeneration[currentNewGenerationCount] = childs[0];
                     newGeneration[currentNewGenerationCount + 1] = childs[1];
 
-                    currentNewGenerationCount += 1;
+                    currentNewGenerationCount += 2;
                 }
 
 
