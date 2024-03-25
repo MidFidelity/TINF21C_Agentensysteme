@@ -59,7 +59,12 @@ public class SupplierAgent extends Agent {
             result[temp.get(i).getIndex()] = true;
         }
 
-        System.out.print(temp.getFirst().getCost());
+        if (getGlobal_best() == null || getGlobal_best().getCost() > temp.getFirst().getCost()) {
+            setGlobal_best(temp.getFirst());
+        }
+
+        setRound_best(temp.getFirst());
+
         return result;
 
 /*
@@ -110,7 +115,7 @@ public class SupplierAgent extends Agent {
         //find the index/key of the highest/worst cost in the costs map of ln 75
         int foundKey = 0;
         for (Map.Entry<Integer, Integer> entry : costs.entrySet()) {
-            if(entry.getValue().equals(sortedCosts.get(contracts.length-1))) {
+            if (entry.getValue().equals(sortedCosts.get(contracts.length - 1))) {
                 foundKey = entry.getKey();
                 break;
             }
@@ -118,8 +123,10 @@ public class SupplierAgent extends Agent {
         return foundKey;
     }
 
-    public void printUtility(Contract contract) {
-        System.out.print(evaluate(contract));
+    public AgentIndexContract printUtility(Contract contract) {
+        AgentIndexContract newContract = new AgentIndexContract(0, contract);
+        newContract.setCost(evaluate(contract));
+        return newContract;
     }
 
 

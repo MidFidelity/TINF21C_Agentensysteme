@@ -28,15 +28,21 @@ import java.util.stream.Collectors;
 public class Verhandlung {
 
     private static final int generationsSize = 500;
-    private static final int maxGenerations = 1000;
+    private static final int maxGenerations = 2000;
+
+    private static final double infillRate = 0.05;
+    private static final double mutationRate = 0.15;
+
+    private static final double minAcceptacneRate = 0.1;
+    private static final double acceptanceRateGrowth = 1.5;
 
     public static void main(String[] args) {
         Contract[] generation;
         Agent agA, agB;
         Mediator med;
         int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
-        int currentInfill = (int) (generationsSize * 0.1);
-        int mutationAmount = (int) (generationsSize * 0.1);
+        int currentInfill = (int) (generationsSize * infillRate);
+        int mutationAmount = (int) (generationsSize * mutationRate);
 
 
         try {
@@ -48,17 +54,14 @@ public class Verhandlung {
             generation = med.initContract();
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
-                currentAcceptanceAmount = Math.max((int) (generationsSize * 0.15), (int) (generationsSize * (1 - (((double) currentGeneration / maxGenerations))*1.3)));
+                currentAcceptanceAmount = Math.max((int) (generationsSize * minAcceptacneRate), (int) (generationsSize * (1 - (((double) currentGeneration / maxGenerations)) * acceptanceRateGrowth)));
                 //mutationAmount = Math.min((int) (generationsSize * ), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
                 //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
 
                 long startTime = System.nanoTime();
-                System.out.print(currentGeneration + ": ");
                 boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
-                System.out.print("  ");
                 boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
-                System.out.print("  ");
                 long voteTime = System.nanoTime() - startTime;
                 ArrayList<Contract> intersect = new ArrayList<>();
                 ArrayList<Contract> singleVote = new ArrayList<>();
@@ -71,7 +74,7 @@ public class Verhandlung {
                         singleVote.add(generation[i]);
                     }
                 }
-
+                int intersectSize = intersect.size();
                  /*
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteB[i]) {
@@ -91,12 +94,7 @@ public class Verhandlung {
                 Collections.shuffle(intersect);
                 Collections.shuffle(singleVote);
 
-                System.out.print(intersect.size());
-                System.out.print("  One Intersect: ");
-                agA.printUtility(intersect.getFirst());
-                System.out.print("  ");
-                agB.printUtility(intersect.getFirst());
-
+                Contract printIntersect = intersect.getFirst();
 
                 int currentNewGenerationCount = 0;
                 //first use intersect (both want it)
@@ -122,9 +120,8 @@ public class Verhandlung {
                 while (newGenerationList.size() < generationsSize) {
                     //If not enough contract fill with random
 
-                    Contract newRandom = med.getRandomContracts(1)[0];
+                    newGenerationList.addAll(Arrays.stream(med.getRandomContracts(generationsSize - newGenerationList.size())).toList());
                     //System.arraycopy(newGeneration, currentNewGenerationCount, newRandom, 0, newRandom.length);
-                    newGenerationList.add(newRandom);
 
                     newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
                 }
@@ -140,6 +137,12 @@ public class Verhandlung {
 
                 //reevaluate
                 generation = newGeneration;
+
+                System.out.printf("%4d: Best A: %5d \t Best B: %5d \t AccAmount: %4d \t Intersect: %4d \t Contract: %5d %5d",
+                        currentGeneration,
+                        agA.getRound_best().getCost(), agB.getRound_best().getCost(),
+                        currentAcceptanceAmount, intersectSize,
+                        agA.printUtility(printIntersect).getCost(), agB.printUtility(printIntersect).getCost());
 
                 long mediatorTime = System.nanoTime() - startTime - voteTime;
                 System.out.println("   Time:" + voteTime + "  " + mediatorTime);
@@ -170,19 +173,52 @@ public class Verhandlung {
                     remove = agB.voteEnd(generation);
                 }
 
-                Contract[] newGeneration = new Contract[generation.length-1];
+                Contract[] newGeneration = new Contract[generation.length - 1];
                 System.arraycopy(generation, 0, newGeneration, 0, remove);
                 System.arraycopy(generation, remove + 1,
                         newGeneration, remove,
                         generation.length - remove - 1);
                 generation = newGeneration;
             }
-            System.out.println();
-            System.out.println("Final Resolution:");
-            agA.printUtility(generation[0]);
-            System.out.print("  ");
-            agB.printUtility(generation[0]);
-            System.out.println();
+
+            System.out.print("""
+                    ----------
+                    Config
+                    ----------
+                    """);
+            System.out.printf("""
+                            Config:
+                            MaxGenerations:    %d \t GenerationSize:       %d
+                            InfillRate:        %.3f \t MutationRate:         %.3f
+                            MinAcceptacneRate: %.3f \t AcceptanceRateGrowth: %.3f
+                            
+                            """,
+                    maxGenerations, generationsSize,
+                    infillRate, mutationRate,
+                    minAcceptacneRate, acceptanceRateGrowth
+            );
+            System.out.print("""
+                    ----------
+                    Result
+                    ----------
+                    """);
+            System.out.printf("""
+                                                
+                            Best Cost A: %d
+                            Best Cost B: %d
+                            Sum: %d
+
+                            Picked Contract:
+                            A: %d \t B: %d
+                            Sum: %d
+                            """,
+                    agA.getGlobal_best().getCost(),
+                    agB.getGlobal_best().getCost(),
+                    agA.getGlobal_best().getCost() + agB.getGlobal_best().getCost(),
+                    agA.printUtility(generation[0]).getCost(),
+                    agB.printUtility(generation[0]).getCost(),
+                    agA.printUtility(generation[0]).getCost() + agB.printUtility(generation[0]).getCost()
+            );
 
 
         } catch (FileNotFoundException e) {

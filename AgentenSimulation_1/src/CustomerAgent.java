@@ -56,7 +56,12 @@ public class CustomerAgent extends Agent {
 			result[temp.get(i).getIndex()] = true;
 		}
 
-		System.out.print(temp.getFirst().getCost());
+		if (getGlobal_best() == null || getGlobal_best().getCost() > temp.getFirst().getCost()) {
+			setGlobal_best(temp.getFirst());
+		}
+
+		setRound_best(temp.getFirst());
+
 		return result;
 		/*
 		Map<Integer, Integer> times = new LinkedHashMap<>();
@@ -119,8 +124,10 @@ public class CustomerAgent extends Agent {
 		return timeMatrix.length;
 	}
 
-	public void printUtility(Contract contract) {
-		System.out.print(evaluateNEW(contract));
+	public AgentIndexContract printUtility(Contract contract) {
+		AgentIndexContract newContract = new AgentIndexContract(0, contract);
+		newContract.setCost(evaluateNEW(contract));
+		return newContract;
 	}
 	
 	private int evaluateNEW(Contract solution) {
