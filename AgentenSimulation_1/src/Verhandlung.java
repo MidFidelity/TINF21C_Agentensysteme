@@ -27,8 +27,8 @@ import java.util.stream.IntStream;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 1000;
-    private static final int maxGenerations = 3000;
+    private static final int generationsSize = 300;
+    private static final int maxGenerations = 5000;
 
     public static void main(String[] args) {
         int[][] generation;
