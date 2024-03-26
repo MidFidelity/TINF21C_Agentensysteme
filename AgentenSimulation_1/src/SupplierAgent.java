@@ -1,14 +1,13 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class SupplierAgent extends Agent {
 
     private final int[][] costMatrix;
-    private final Object mutexEvaluatedCosts = new Object();
-
-    HashMap<Contract, Integer> evaluatedCosts = new HashMap<>();
+    Map<Contract, Integer> evaluatedCosts = new ConcurrentHashMap<>();
 
     public SupplierAgent(File file) throws FileNotFoundException {
 
@@ -131,10 +130,8 @@ public class SupplierAgent extends Agent {
 
 
     private int evaluate(Contract contract) {
-        synchronized (mutexEvaluatedCosts) {
-            if (evaluatedCosts.containsKey(contract)) {
-                return evaluatedCosts.get(contract);
-            }
+        if (evaluatedCosts.containsKey(contract)) {
+            return evaluatedCosts.get(contract);
         }
         int[] contractArr = contract.getContract();
         int result = 0;
@@ -143,9 +140,7 @@ public class SupplierAgent extends Agent {
             int spalte = contractArr[i + 1];
             result += costMatrix[zeile][spalte];
         }
-        synchronized (mutexEvaluatedCosts) {
-            evaluatedCosts.put(contract, result);
-        }
+        evaluatedCosts.put(contract, result);
         return result;
 
     }

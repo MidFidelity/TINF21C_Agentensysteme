@@ -1,13 +1,14 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class CustomerAgent extends Agent {
 
 	private final int[][] timeMatrix;
 	private final Object mutexEvaluatedTimes = new Object();
-	HashMap<Contract, Integer> evaluatedTimes = new HashMap<>();
+	Map<Contract, Integer> evaluatedTimes = new ConcurrentHashMap<>();
 
 	public CustomerAgent(File file) throws FileNotFoundException {
 
@@ -131,10 +132,8 @@ public class CustomerAgent extends Agent {
 	}
 	
 	private int evaluateNEW(Contract solution) {
-		synchronized (mutexEvaluatedTimes) {
-			if (evaluatedTimes.containsKey(solution)) {
-				return evaluatedTimes.get(solution);
-			}
+		if (evaluatedTimes.containsKey(solution)) {
+			return evaluatedTimes.get(solution);
 		}
 
 		int[] solutionArr = solution.getContract();
@@ -180,9 +179,7 @@ public class CustomerAgent extends Agent {
 //		}
 
 		int timeValue = start[last][anzM-1]+timeMatrix[last][anzM-1];
-		synchronized (mutexEvaluatedTimes){
-			evaluatedTimes.put(solution, timeValue);
-		}
+		evaluatedTimes.put(solution, timeValue);
 		return (timeValue);
 
 	}
