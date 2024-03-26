@@ -31,7 +31,7 @@ public class Verhandlung {
     private static final int maxGenerations = 2000;
 
     private static final double infillRate = 0.05;
-    private static final double mutationRate = 0.15;
+    private static final double mutationRate = 0.25;
 
     private static final double minAcceptacneRate = 0.1;
     private static final double acceptanceRateGrowth = 1.5;
@@ -55,7 +55,7 @@ public class Verhandlung {
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
                 currentAcceptanceAmount = Math.max((int) (generationsSize * minAcceptacneRate), (int) (generationsSize * (1 - (((double) currentGeneration / maxGenerations)) * acceptanceRateGrowth)));
-                //mutationAmount = Math.min((int) (generationsSize * ), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
+                mutationAmount = Math.min((int) (generationsSize * mutationRate), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
                 //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
 
@@ -97,19 +97,18 @@ public class Verhandlung {
                 Contract printIntersect = intersect.getFirst();
 
                 int currentNewGenerationCount = 0;
-                //first use intersect (both want it)
-                while (currentNewGenerationCount < (generationsSize - currentInfill) && intersect.size() >= 2) {
-                    Contract parent1 = intersect.removeLast();
-                    Contract parent2 = intersect.removeLast();
+                //use intersect (both want it)
+                Random rand = new Random();
+                while (currentNewGenerationCount < (generationsSize - currentInfill)) {
+                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
+                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
                     Contract[] childs = Crossover.cxOrdered(parent1, parent2);
 
 
                     newGeneration[currentNewGenerationCount] = childs[0];
                     newGeneration[currentNewGenerationCount + 1] = childs[1];
-                    newGeneration[currentNewGenerationCount + 2] = parent1;
-                    newGeneration[currentNewGenerationCount + 3] = parent2;
 
-                    currentNewGenerationCount += 4;
+                    currentNewGenerationCount += 2;
                 }
 
                 List<Contract> newGenerationList = new ArrayList<>();
@@ -129,7 +128,6 @@ public class Verhandlung {
                 newGeneration = newGenerationList.toArray(Contract[]::new);
 
                 // Mutate
-                Random rand = new Random();
                 for (int i = 0; i < mutationAmount; i++) {
                     int contractIndexToMutate = rand.nextInt(generationsSize);
                     newGeneration[contractIndexToMutate].mutate();
