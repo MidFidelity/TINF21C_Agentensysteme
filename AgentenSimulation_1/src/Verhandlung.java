@@ -1,6 +1,9 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 
@@ -27,8 +30,8 @@ import java.util.stream.Collectors;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 2000;
-    private static final int maxGenerations = 400;
+    private static final int generationsSize = 5000;
+    private static final int maxGenerations = 1000;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5;
@@ -54,7 +57,6 @@ public class Verhandlung {
 
             //Verhandlung initialisieren
             generation = med.initContract();
-            int lastRoundRandomBegin = 0;
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
                 currentAcceptanceAmount = Math.min(
@@ -106,7 +108,7 @@ public class Verhandlung {
                 }
                  */
 
-                Contract[] newGeneration = new Contract[generationsSize];
+                //Contract[] newGeneration = new Contract[generationsSize];
                 if (intersect.isEmpty()) {
                     //TODO
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
@@ -120,22 +122,31 @@ public class Verhandlung {
                 //use intersect (both want it)
                 SplittableRandom rand = new SplittableRandom();
 
-                List<Contract[]> cartesianProduct = new ArrayList<>();
+                List<Contract[]> cartesianProduct = new LinkedList<>();
                 for (int i = 0; i < intersect.size(); i++) {
-                    for (int j = 0; j <intersect.size(); j++) {
-                        cartesianProduct.add(new Contract[]{intersect.get(i), intersect.get(j)});
+                    for (Contract contract : intersect) {
+                        cartesianProduct.add(new Contract[]{intersect.get(i), contract});
                     }
                 }
                 Collections.shuffle(cartesianProduct);
 
-                HashSet<Contract> newGenerationHashSet = new HashSet<>();
+                // Determine the number of available processors (cores)
+                int availableProcessors = Runtime.getRuntime().availableProcessors();
+
+                // Create an ExecutorService with a fixed thread pool using all available processors
+                ExecutorService executor = Executors.newFixedThreadPool(availableProcessors);
+
+                Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
                 int whileCount = 0;
                 while (newGenerationHashSet.size()<generationsSize && whileCount<10000){
-                    Contract[] parents = cartesianProduct.get(whileCount%cartesianProduct.size());
-                    Contract[] childs = Crossover.cxOrdered(parents[0], parents[1]);
+                    executor.execute(() -> {
+                        Contract[] parents = cartesianProduct.get(newGenerationHashSet.size() % cartesianProduct.size());
+                        Contract[] childs = Crossover.cxOrdered(parents[0], parents[1]);
 
-                    newGenerationHashSet.add(childs[0]);
-                    newGenerationHashSet.add(childs[1]);
+                        newGenerationHashSet.add(childs[0]);
+                        newGenerationHashSet.add(childs[1]);
+
+                    });
                     whileCount++;
                 }
                 //System.out.println(whileCount);
@@ -175,7 +186,7 @@ public class Verhandlung {
 
                  */
 
-                newGeneration = newGenerationHashSet.toArray(Contract[]::new);
+                Contract [] newGeneration = newGenerationHashSet.toArray(Contract[]::new);
 
                 // Mutate
                 for (int i = 0; i < mutationAmount; i++) {
