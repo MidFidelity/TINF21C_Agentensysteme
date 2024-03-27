@@ -13,8 +13,10 @@ public class Crossover {
         int[] parentContract2 = parent2.getContract();
 
         Random rand = new Random();
-        int firstPoint = rand.nextInt((parent1.getContractSize() - 2));
-        int secondPoint = rand.nextInt((firstPoint + 1), parent1.getContractSize());
+        //int firstPoint = rand.nextInt((parent1.getContractSize() - 2));
+        //int secondPoint = rand.nextInt((firstPoint + 1), parent1.getContractSize());
+        int firstPoint = (int)(Math.random() * (parent1.getContractSize() - 2));
+        int secondPoint = (firstPoint + 1) + (int)(Math.random() * (parent1.getContractSize() - firstPoint));
 
         //swap children part
         System.arraycopy(parentContract1, firstPoint, child2, firstPoint, (secondPoint - firstPoint));

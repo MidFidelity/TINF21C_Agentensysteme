@@ -28,20 +28,22 @@ import java.util.stream.Collectors;
 public class Verhandlung {
 
     private static final int generationsSize = 500;
-    private static final int maxGenerations = 2000;
+    private static final int maxGenerations = 500;
 
     private static final double infillRate = 0.05;
-    private static final double mutationRate = 0.25;
+    private static final double mutationRate = 0.5;
 
-    private static final double minAcceptacneRate = 0.1;
-    private static final double acceptanceRateGrowth = 1.5;
+    private static final double minAcceptacneRate = 0.25;
+    private static final double maxAcceptacneRate = 0.9;
+    private static final double acceptanceRateGrowth = maxAcceptacneRate-minAcceptacneRate;
 
     public static void main(String[] args) {
         Contract[] generation;
         Agent agA, agB;
         Mediator med;
         int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
-        int currentInfill = (int) (generationsSize * infillRate);
+        //int currentInfill = (int) (generationsSize * infillRate);
+        int currentInfill = 0;
         int mutationAmount = (int) (generationsSize * mutationRate);
 
 
@@ -52,9 +54,18 @@ public class Verhandlung {
 
             //Verhandlung initialisieren
             generation = med.initContract();
+            int lastRoundRandomBegin = 0;
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
-                currentAcceptanceAmount = Math.max((int) (generationsSize * minAcceptacneRate), (int) (generationsSize * (1 - (((double) currentGeneration / maxGenerations)) * acceptanceRateGrowth)));
+                currentAcceptanceAmount = Math.min(
+                        (int) ((double) generationsSize * maxAcceptacneRate),
+                        Math.max(
+                                (int) (generationsSize * minAcceptacneRate),
+                                (int) (generationsSize * (
+                                        (1 - (((double) currentGeneration / maxGenerations)))
+                                                *acceptanceRateGrowth+minAcceptacneRate)
+                                )
+                        ));
                 mutationAmount = Math.min((int) (generationsSize * mutationRate), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
                 //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
@@ -75,6 +86,15 @@ public class Verhandlung {
                     }
                 }
                 int intersectSize = intersect.size();
+
+                /*
+                int RandomInfillIntersect = 0;
+                for (int i = lastRoundRandomBegin; i < generationsSize; i++) {
+                    if (voteA[i] && voteB[i]) {
+                        RandomInfillIntersect++;
+                    }
+                }
+                System.out.println(RandomInfillIntersect);
                  /*
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteB[i]) {
@@ -99,6 +119,17 @@ public class Verhandlung {
                 int currentNewGenerationCount = 0;
                 //use intersect (both want it)
                 Random rand = new Random();
+
+                HashSet<Contract> newGenerationHashSet = new HashSet<>();
+                while (newGenerationHashSet.size()<generationsSize){
+                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
+                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
+                    Contract[] childs = Crossover.cxOrdered(parent1, parent2);
+
+                    newGenerationHashSet.add(childs[0]);
+                    newGenerationHashSet.add(childs[1]);
+                }
+                /*
                 while (currentNewGenerationCount < (generationsSize - currentInfill)) {
                     Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
                     Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
@@ -116,6 +147,8 @@ public class Verhandlung {
 
                 newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
 
+                lastRoundRandomBegin = newGenerationList.size();
+
                 while (newGenerationList.size() < generationsSize) {
                     //If not enough contract fill with random
 
@@ -125,7 +158,9 @@ public class Verhandlung {
                     newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
                 }
 
-                newGeneration = newGenerationList.toArray(Contract[]::new);
+                 */
+
+                newGeneration = newGenerationHashSet.toArray(Contract[]::new);
 
                 // Mutate
                 for (int i = 0; i < mutationAmount; i++) {

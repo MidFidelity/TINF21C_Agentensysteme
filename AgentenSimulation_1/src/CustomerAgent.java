@@ -64,28 +64,6 @@ public class CustomerAgent extends Agent {
 		setRound_best(temp.getFirst());
 
 		return result;
-		/*
-		Map<Integer, Integer> times = new LinkedHashMap<>();
-		for (int i = 0; i < contracts.length; i++) {
-			times.put(i, evaluateNEW(contracts[i]));
-		}
-
-		times = sortByValue(times);
-
-		boolean[] result = new boolean[contracts.length];
-		AtomicInteger count = new AtomicInteger();
-
-		times.forEach((integer, integer2) -> {
-			if (count.get() < acceptanceAmount) {
-				result[integer] = true;
-				count.getAndIncrement();
-			}
-		});
-
-		System.out.print(times.entrySet().iterator().next().getValue());
-		return result;
-
-		 */
 	}
 
 	private static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
@@ -143,7 +121,7 @@ public class CustomerAgent extends Agent {
 		if(timeMatrix.length != solution.getContractSize())System.out.println("Fehler in ");
 		int[][] start = new int[timeMatrix.length][timeMatrix[0].length];
 
-		Arrays.stream(start).forEach(a -> Arrays.fill(a, 0));	//should be irrelevant!
+		//Arrays.stream(start).forEach(a -> Arrays.fill(a, 0));	//should be irrelevant!
 
 		int job = solutionArr[0];
 		for(int m=1;m<anzM;m++) {
