@@ -28,8 +28,8 @@ import java.util.stream.IntStream;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 500;
-    private static final int maxGenerations = 1000;
+    private static final int generationsSize = 5000;
+    private static final int maxGenerations = 1500;
 
     public static void main(String[] args) {
         int[][] generation;
