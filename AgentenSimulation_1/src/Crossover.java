@@ -1,7 +1,4 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.SplittableRandom;
+import java.util.*;
 
 public class Crossover {
     public static SplittableRandom rand = new SplittableRandom();
@@ -17,8 +14,6 @@ public class Crossover {
         //Random rand = new Random();
         int firstPoint = rand.nextInt((parent1.getContractSize() - 2));
         int secondPoint = rand.nextInt((firstPoint + 1), parent1.getContractSize());
-//        int firstPoint = (int)(Math.random() * (parent1.getContractSize() - 2));
-//        int secondPoint = (firstPoint + 1) + (int)(Math.random() * (parent1.getContractSize() - firstPoint));
 
         //swap children part
         System.arraycopy(parentContract1, firstPoint, child2, firstPoint, (secondPoint - firstPoint));

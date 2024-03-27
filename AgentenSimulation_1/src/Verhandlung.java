@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class Verhandlung {
 
     private static final int generationsSize = 500;
-    private static final int maxGenerations = 500;
+    private static final int maxGenerations = 300;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5;
@@ -116,19 +116,33 @@ public class Verhandlung {
 
                 Contract printIntersect = intersect.getFirst();
 
-                int currentNewGenerationCount = 0;
+                //int currentNewGenerationCount = 0;
                 //use intersect (both want it)
                 SplittableRandom rand = new SplittableRandom();
 
+                List<Contract[]> cartesianProduct = new ArrayList<>();
+                for (int i = 0; i < intersect.size(); i++) {
+                    for (int j = 0; j <intersect.size(); j++) {
+                        cartesianProduct.add(new Contract[]{intersect.get(i), intersect.get(j)});
+                    }
+                }
+                Collections.shuffle(cartesianProduct);
+
                 HashSet<Contract> newGenerationHashSet = new HashSet<>();
-                while (newGenerationHashSet.size()<generationsSize){
-                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
-                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
-                    if(parent1 == parent2)continue;
-                    Contract[] childs = Crossover.cxOrdered(parent1, parent2);
+                int whileCount = 0;
+                while (newGenerationHashSet.size()<generationsSize && whileCount<10000){
+                    Contract[] parents = cartesianProduct.get(whileCount%cartesianProduct.size());
+                    Contract[] childs = Crossover.cxOrdered(parents[0], parents[1]);
 
                     newGenerationHashSet.add(childs[0]);
-//                    newGenerationHashSet.add(childs[1]);
+                    newGenerationHashSet.add(childs[1]);
+                    whileCount++;
+                }
+                //System.out.println(whileCount);
+
+                //if not enough contract after 10.000 try just fill with random - just for the sake of runtime
+                while (newGenerationHashSet.size() < generationsSize) {
+                    newGenerationHashSet.addAll(Arrays.stream(med.getRandomContracts(generationsSize - newGenerationHashSet.size())).toList());
                 }
                 /*
                 while (currentNewGenerationCount < (generationsSize - currentInfill)) {
