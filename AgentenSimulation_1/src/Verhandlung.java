@@ -118,16 +118,17 @@ public class Verhandlung {
 
                 int currentNewGenerationCount = 0;
                 //use intersect (both want it)
-                Random rand = new Random();
+                SplittableRandom rand = new SplittableRandom();
 
                 HashSet<Contract> newGenerationHashSet = new HashSet<>();
                 while (newGenerationHashSet.size()<generationsSize){
                     Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
                     Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
+                    if(parent1 == parent2)continue;
                     Contract[] childs = Crossover.cxOrdered(parent1, parent2);
 
                     newGenerationHashSet.add(childs[0]);
-                    newGenerationHashSet.add(childs[1]);
+//                    newGenerationHashSet.add(childs[1]);
                 }
                 /*
                 while (currentNewGenerationCount < (generationsSize - currentInfill)) {

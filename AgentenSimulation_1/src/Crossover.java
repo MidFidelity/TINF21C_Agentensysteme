@@ -1,9 +1,11 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
+import java.util.SplittableRandom;
 
 public class Crossover {
+    public static SplittableRandom rand = new SplittableRandom();
+
     public static Contract[] cxOrdered(Contract parent1, Contract parent2) {
         int[] child1 = new int[parent1.getContractSize()];
         int[] child2 = new int[parent2.getContractSize()];
@@ -12,11 +14,11 @@ public class Crossover {
         int[] parentContract1 = parent1.getContract();
         int[] parentContract2 = parent2.getContract();
 
-        Random rand = new Random();
-        //int firstPoint = rand.nextInt((parent1.getContractSize() - 2));
-        //int secondPoint = rand.nextInt((firstPoint + 1), parent1.getContractSize());
-        int firstPoint = (int)(Math.random() * (parent1.getContractSize() - 2));
-        int secondPoint = (firstPoint + 1) + (int)(Math.random() * (parent1.getContractSize() - firstPoint));
+        //Random rand = new Random();
+        int firstPoint = rand.nextInt((parent1.getContractSize() - 2));
+        int secondPoint = rand.nextInt((firstPoint + 1), parent1.getContractSize());
+//        int firstPoint = (int)(Math.random() * (parent1.getContractSize() - 2));
+//        int secondPoint = (firstPoint + 1) + (int)(Math.random() * (parent1.getContractSize() - firstPoint));
 
         //swap children part
         System.arraycopy(parentContract1, firstPoint, child2, firstPoint, (secondPoint - firstPoint));
@@ -64,8 +66,6 @@ public class Crossover {
         assert child1.length == child2.length;
 
         int length = child1.length;
-
-        Random rand = new Random();
 
         int start_index = rand.nextInt(length - 2);
         int end_index = rand.nextInt(start_index + 1, length+1);
