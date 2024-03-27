@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 500;
-    private static final int maxGenerations = 300;
+    private static final int generationsSize = 2000;
+    private static final int maxGenerations = 400;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5;
