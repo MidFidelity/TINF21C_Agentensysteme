@@ -1,10 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
+import java.util.concurrent.*;
 
 
 //SIMULATION!
@@ -30,14 +27,14 @@ import java.util.stream.Collectors;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 5000;
-    private static final int maxGenerations = 1000;
+    private static final int generationsSize = 2000;
+    private static final int maxGenerations = 500;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5;
 
     private static final double minAcceptacneRate = 0.25;
-    private static final double maxAcceptacneRate = 0.9;
+    private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate-minAcceptacneRate;
 
     public static void main(String[] args) {
@@ -48,9 +45,10 @@ public class Verhandlung {
         //int currentInfill = (int) (generationsSize * infillRate);
         int currentInfill = 0;
         int mutationAmount = (int) (generationsSize * mutationRate);
+        SplittableRandom rand = new SplittableRandom();
 
 
-        try {
+        try (ExecutorService executor = Executors.newFixedThreadPool(5)){
             agA = new SupplierAgent(new File("../data/daten3ASupplier_200.txt"));
             agB = new CustomerAgent(new File("../data/daten4BCustomer_200_5.txt"));
             med = new Mediator(agA.getContractSize(), agB.getContractSize(), generationsSize);
@@ -73,8 +71,21 @@ public class Verhandlung {
 
 
                 long startTime = System.nanoTime();
-                boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
-                boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
+
+
+//                boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
+//                boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
+
+                int finalCurrentAcceptanceAmount = currentAcceptanceAmount;
+                Contract[] finalGeneration = generation;
+                CompletableFuture<boolean[]> voteAFuture = CompletableFuture.supplyAsync(()->agA.voteLoop(finalGeneration, finalCurrentAcceptanceAmount), executor);
+                CompletableFuture<boolean[]> voteBFuture = CompletableFuture.supplyAsync(()->agB.voteLoop(finalGeneration, finalCurrentAcceptanceAmount), executor);
+
+                CompletableFuture.allOf(voteAFuture, voteBFuture).join();
+
+                boolean[] voteA = voteAFuture.get();
+                boolean[] voteB = voteBFuture.get();
+
                 long voteTime = System.nanoTime() - startTime;
                 ArrayList<Contract> intersect = new ArrayList<>();
                 ArrayList<Contract> singleVote = new ArrayList<>();
@@ -120,36 +131,45 @@ public class Verhandlung {
 
                 //int currentNewGenerationCount = 0;
                 //use intersect (both want it)
-                SplittableRandom rand = new SplittableRandom();
-
-                List<Contract[]> cartesianProduct = new LinkedList<>();
-                for (int i = 0; i < intersect.size(); i++) {
-                    for (Contract contract : intersect) {
-                        cartesianProduct.add(new Contract[]{intersect.get(i), contract});
-                    }
-                }
-                Collections.shuffle(cartesianProduct);
+//                SplittableRandom rand = new SplittableRandom();
+//
+//                List<Contract[]> cartesianProduct = new LinkedList<>();
+//                for (int i = 0; i < intersect.size(); i++) {
+//                    for (Contract contract : intersect) {
+//                        cartesianProduct.add(new Contract[]{intersect.get(i), contract});
+//                    }
+//                }
+//                Collections.shuffle(cartesianProduct);
 
                 // Determine the number of available processors (cores)
-                int availableProcessors = Runtime.getRuntime().availableProcessors();
 
                 // Create an ExecutorService with a fixed thread pool using all available processors
-                ExecutorService executor = Executors.newFixedThreadPool(availableProcessors);
 
-                Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
+//                Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
+//                int whileCount = 0;
+//                while (newGenerationHashSet.size()<generationsSize && whileCount<10000){
+//                    executor.execute(() -> {
+//                        Contract[] parents = cartesianProduct.get(newGenerationHashSet.size() % cartesianProduct.size());
+//                        Contract[] childs = Crossover.cxOrdered(parents[0], parents[1]);
+//
+//                        newGenerationHashSet.add(childs[0]);
+//                        newGenerationHashSet.add(childs[1]);
+//
+//                    });
+//                    whileCount++;
+//                }
+                //System.out.println(whileCount);
+
+                Set<Contract> newGenerationHashSet = new HashSet<>();
                 int whileCount = 0;
-                while (newGenerationHashSet.size()<generationsSize && whileCount<10000){
-                    executor.execute(() -> {
-                        Contract[] parents = cartesianProduct.get(newGenerationHashSet.size() % cartesianProduct.size());
-                        Contract[] childs = Crossover.cxOrdered(parents[0], parents[1]);
-
-                        newGenerationHashSet.add(childs[0]);
-                        newGenerationHashSet.add(childs[1]);
-
-                    });
+                while (newGenerationHashSet.size()<generationsSize && whileCount<generationsSize){
+                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
+                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
+                    Contract[] childs = parent1.crossover(parent2);
+                    newGenerationHashSet.add(childs[0]);
+                    newGenerationHashSet.add(childs[1]);
                     whileCount++;
                 }
-                //System.out.println(whileCount);
 
                 //if not enough contract after 10.000 try just fill with random - just for the sake of runtime
                 while (newGenerationHashSet.size() < generationsSize) {
@@ -205,6 +225,7 @@ public class Verhandlung {
 
                 long mediatorTime = System.nanoTime() - startTime - voteTime;
                 System.out.println("   Time:" + voteTime + "  " + mediatorTime);
+                System.out.flush();
             }
 
             System.out.println("----------");
@@ -278,9 +299,7 @@ public class Verhandlung {
                     agB.printUtility(generation[0]).getCost(),
                     agA.printUtility(generation[0]).getCost() + agB.printUtility(generation[0]).getCost()
             );
-
-
-        } catch (FileNotFoundException e) {
+        } catch (FileNotFoundException | InterruptedException | ExecutionException e) {
             System.out.println(e.getMessage());
         }
     }

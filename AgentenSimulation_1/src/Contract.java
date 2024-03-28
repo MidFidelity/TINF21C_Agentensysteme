@@ -1,9 +1,12 @@
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.SplittableRandom;
 
 public class Contract {
     private int[] contract;
+    private static final SplittableRandom rand = new SplittableRandom();
+
 
     public Contract(int[] contract) {
         this.contract = contract;
@@ -31,7 +34,7 @@ public class Contract {
 
     public void mutate() {
         int[] contractArr = this.contract;
-        Random rand = new Random();
+
         int start = rand.nextInt((contractArr.length - 1));
         int end = start + 1;
         int temp = contractArr[start];
