@@ -1,4 +1,7 @@
 use std::io;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+use crate::contract::Contract;
 
 pub(crate) struct Mediator {
     contract_size: usize,
@@ -17,17 +20,16 @@ impl Mediator {
         })
     }
 
-    pub fn init_contract(&self) -> Vec<usize> {
-        (0..self.contract_size).collect()
-    }
+    pub fn get_random_contracts(&self, count: usize) -> Vec<Contract> {
+        let mut contracts = Vec::with_capacity(count);
+        let mut rng = thread_rng();
 
-    pub fn construct_proposal(&self, contract: &Vec<usize>) -> Vec<usize> {
-        let mut proposal = contract.to_vec();
-        let element = rand::random::<usize>() % (proposal.len() - 1);
-        let value_1 = proposal[element];
-        let value_2 = proposal[element + 1];
-        proposal[element] = value_2;
-        proposal[element + 1] = value_1;
-        proposal
+        for _ in 0..count {
+            let mut contract: Vec<usize> = (0..self.contract_size).collect();
+            contract.shuffle(&mut rng);
+            contracts.push(Contract {contract});
+        }
+
+        contracts
     }
 }
