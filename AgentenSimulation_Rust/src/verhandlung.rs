@@ -6,17 +6,18 @@ mod contract;
 
 use std::collections::HashSet;
 use std::fs::File;
-use std::hash::Hash;
-use std::io::{BufRead};
+
+
 use rand::Rng;
 use crate::agent::Agent;
 use crate::contract::Contract;
 use crate::supplier_agent::SupplierAgent;
 use crate::customer_agent::CustomerAgent;
 use crate::mediator::Mediator;
+use rayon::prelude::*;
 
-const GENERATIONS_SIZE: usize = 100;
-const MAX_GENERATIONS: usize = 1000;
+const GENERATIONS_SIZE: usize = 17500;
+const MAX_GENERATIONS: usize = 1300;
 
 const INFILL_RATE: f64 = 0.05;
 const MUTATION_RATE: f64 = 0.5;
@@ -25,23 +26,24 @@ const MIN_ACCEPTANCE_RATE: f64 = 0.25;
 const MAX_ACCEPTANCE_RATE: f64 = 0.7;
 const ACCEPTANCE_RATE_GROWTH: f64 = MAX_ACCEPTANCE_RATE - MIN_ACCEPTANCE_RATE;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {    
     let mut ag_a = SupplierAgent::new(File::open("../data/daten3ASupplier_200.txt")?)?;
     let mut ag_b = CustomerAgent::new(File::open("../data/daten4BCustomer_200_5.txt")?)?;
     // let mut ag_a = SupplierAgent::new(File::open("../data/datenSupplier_5.txt")?)?;
     // let mut ag_b = CustomerAgent::new(File::open("../data/datenCustomer_5_3.txt")?)?;
     let med = Mediator::new(ag_a.get_contract_size(), ag_b.get_contract_size())?;
-
-
+    
     let mut generation = med.get_random_contracts(GENERATIONS_SIZE);
 
     for n_generation in 0..MAX_GENERATIONS {
+        
         let acceptance_amount = calculate_acceptance_amount(n_generation);
         let mutation_amount = calculate_mutation_amount(n_generation);
+        
+        let vote_a = ag_a.vote_many(&generation, acceptance_amount).await;
 
-        let vote_a = ag_a.vote_many(&generation, acceptance_amount);
-
-        let vote_b = ag_b.vote_many(&generation, acceptance_amount);
+        let vote_b = ag_b.vote_many(&generation, acceptance_amount).await;
 
 
         let mut intersect: Vec<Contract> = Vec::new();
@@ -55,11 +57,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut new_generation_set: HashSet<Contract> = HashSet::new();
         let mut loop_count = 0usize;
         let mut rng = rand::thread_rng();
+        
         while new_generation_set.len() < GENERATIONS_SIZE && loop_count < GENERATIONS_SIZE {
-            let parent1 = &intersect[rng.gen_range(0..intersect.len())];
-            let parent2 = &intersect[rng.gen_range(0..intersect.len())];
-            let child = parent1.ordered_crossover(parent2);
-            new_generation_set.insert(child);
+            let missing = (0..GENERATIONS_SIZE - new_generation_set.len());
+
+            let mut parents:Vec<(&Contract, &Contract)>= Vec::with_capacity(GENERATIONS_SIZE - new_generation_set.len());
+
+            for _ in 0..GENERATIONS_SIZE - new_generation_set.len(){
+                let parent1 = &intersect[rng.gen_range(0..intersect.len())];
+                let parent2 = &intersect[rng.gen_range(0..intersect.len())];
+                parents.push((parent1, parent2))
+            }
+            
+            let new_children:Vec<Contract> = missing.into_par_iter().map(|i|{
+                let (parent1, parent2) = parents[i];
+                parent1.ordered_crossover(parent2)
+            }).collect();
+            
+            new_generation_set.extend(new_children);
 
             loop_count += 1;
         }
@@ -91,14 +106,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while generation.len() > 1 {
         if generation.len() % 2 == 0 {
-            generation.remove(ag_a.vote_end(&generation));
+            generation.remove(ag_a.vote_end(&generation).await);
         } else {
-            generation.remove(ag_b.vote_end(&generation));
+            generation.remove(ag_b.vote_end(&generation).await);
         }
     }
 
     println!(
-r#"----------
+        r#"----------
 Config
 ----------
 
@@ -127,7 +142,6 @@ Sum: {}"#,
         ag_a._eval(&generation[0]),
         ag_b._eval(&generation[0]),
         ag_a._eval(&generation[0]) + ag_b._eval(&generation[0]));
-
     Ok(())
 }
 
