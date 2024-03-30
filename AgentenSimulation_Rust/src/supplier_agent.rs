@@ -1,11 +1,11 @@
+use crate::agent::Agent;
+use crate::contract::{Contract, CostContract};
+use rayon::iter::IntoParallelRefIterator;
+use rayon::prelude::ParallelSliceMut;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
-use rayon::iter::IntoParallelRefIterator;
-use rayon::prelude::ParallelSliceMut;
-use crate::agent::Agent;
-use crate::contract::{Contract, CostContract};
-use rayon::prelude::*;
 
 pub struct SupplierAgent {
     cost_matrix: Vec<Vec<isize>>,
@@ -19,10 +19,10 @@ impl Agent for SupplierAgent {
         self.cost_matrix.len()
     }
 
-    async fn vote_many(&mut self, contracts: &Vec<Contract>, acceptance_amount: usize) -> Vec<bool> {
+    fn vote_many(&mut self, contracts: &Vec<Contract>, acceptance_amount: usize) -> Vec<bool> {
         self.best_round = None;
 
-        let sorted_cost_contracts = self.evaluate_async(contracts).await;
+        let sorted_cost_contracts = self.evaluate_async(contracts);
 
         let mut result: Vec<bool> = vec![false; contracts.len()];
 
@@ -33,12 +33,13 @@ impl Agent for SupplierAgent {
         result
     }
 
-    async fn vote_end(&mut self, contracts: &Vec<Contract>) -> usize {
-        let sorted_cost_contracts = self.evaluate_async(contracts).await;
+    fn vote_end(&mut self, contracts: &Vec<Contract>) -> usize {
+        let sorted_cost_contracts: Vec<CostContract> = self.evaluate_async(contracts);
 
-        if self.calculated_times.is_empty(){
+        if self.calculated_times.is_empty() {
             for contract in sorted_cost_contracts.iter() {
-                self.calculated_times.insert(contract.contract.clone(), contract.cost);
+                self.calculated_times
+                    .insert(contract.contract.clone(), contract.cost);
             }
         }
 
@@ -49,7 +50,7 @@ impl Agent for SupplierAgent {
         if let Some(cost) = self.calculated_times.get(contract) {
             return *cost;
         }
-        
+
         let mut result = 0;
         for i in 0..contract.len() - 1 {
             let row = contract[i];
@@ -59,30 +60,61 @@ impl Agent for SupplierAgent {
         result
     }
 
-    async fn evaluate_async(&mut self, contracts: &Vec<Contract>) -> Vec<CostContract> {
-        let costs: Vec<isize> = contracts.par_iter().map(|contract| self._eval(contract)).collect();
+    fn evaluate_sync(&mut self, contracts: &Vec<Contract>) -> Vec<CostContract> {
+        let costs: Vec<isize> = contracts
+            .iter()
+            .map(|contract| self._eval(contract))
+            .collect();
 
         let mut cost_contracts: Vec<CostContract> = Vec::new();
 
         for (index, contract) in contracts.iter().enumerate() {
-            cost_contracts.push(CostContract::new_filled(contract.clone(), costs[index], index));
+            let cost_contract = CostContract::new_filled(contract.clone(), costs[index], index);
+            cost_contracts.push(cost_contract);
+            //self.calculated_times.insert(contract.clone(), costs[index]);
         }
 
         cost_contracts.par_sort();
 
         let round_best = cost_contracts.first().unwrap();
         self.best_round = Some(round_best.clone());
-        if self.best_global == None || round_best<self.best_global.as_ref().unwrap() {
+        if self.best_global == None || round_best < self.best_global.as_ref().unwrap() {
             self.best_global = Some(round_best.clone())
         }
-        
+
+        cost_contracts
+    }
+
+    fn evaluate_async(&mut self, contracts: &Vec<Contract>) -> Vec<CostContract> {
+        let costs: Vec<isize> = contracts
+            .par_iter()
+            .map(|contract| self._eval(contract))
+            .collect();
+
+        let mut cost_contracts: Vec<CostContract> = Vec::new();
+
+        for (index, contract) in contracts.iter().enumerate() {
+            cost_contracts.push(CostContract::new_filled(
+                contract.clone(),
+                costs[index],
+                index,
+            ));
+        }
+
+        cost_contracts.par_sort();
+
+        let round_best = cost_contracts.first().unwrap();
+        self.best_round = Some(round_best.clone());
+        if self.best_global == None || round_best < self.best_global.as_ref().unwrap() {
+            self.best_global = Some(round_best.clone())
+        }
+
         cost_contracts
     }
 
     fn get_round_best(&self) -> &CostContract {
         &self.best_round.as_ref().unwrap()
     }
-
 
     fn get_global_best(&self) -> &CostContract {
         &self.best_global.as_ref().unwrap()
@@ -108,6 +140,11 @@ impl SupplierAgent {
             }
         }
 
-        Ok(Self { cost_matrix, best_round: None, best_global: None , calculated_times:HashMap::new()})
+        Ok(Self {
+            cost_matrix,
+            best_round: None,
+            best_global: None,
+            calculated_times: HashMap::new(),
+        })
     }
 }

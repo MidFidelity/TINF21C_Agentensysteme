@@ -1,9 +1,9 @@
 use crate::agent::Agent;
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::collections::hash_map::HashMap;
 use crate::contract::{Contract, CostContract};
 use rayon::prelude::*;
+use std::collections::hash_map::HashMap;
+use std::fs::File;
+use std::io::{self, BufRead};
 
 pub struct CustomerAgent {
     time_matrix: Vec<Vec<isize>>,
@@ -17,10 +17,10 @@ impl Agent for CustomerAgent {
         self.time_matrix.len()
     }
 
-    async fn vote_many(&mut self, contracts: &Vec<Contract>, acceptance_amount: usize) -> Vec<bool> {
+    fn vote_many(&mut self, contracts: &Vec<Contract>, acceptance_amount: usize) -> Vec<bool> {
         self.best_round = None;
 
-        let sorted_cost_contracts = self.evaluate_async(contracts).await;
+        let sorted_cost_contracts = self.evaluate_async(contracts);
 
         let mut result: Vec<bool> = vec![false; contracts.len()];
 
@@ -31,12 +31,13 @@ impl Agent for CustomerAgent {
         result
     }
 
-    async fn vote_end(&mut self, contracts: &Vec<Contract>) -> usize {
-        let sorted_cost_contracts = self.evaluate_async(contracts).await;
+    fn vote_end(&mut self, contracts: &Vec<Contract>) -> usize {
+        let sorted_cost_contracts: Vec<CostContract> = self.evaluate_async(contracts);
 
-        if self.calculated_times.is_empty(){
+        if self.calculated_times.is_empty() {
             for contract in sorted_cost_contracts.iter() {
-                self.calculated_times.insert(contract.contract.clone(), contract.cost);
+                self.calculated_times
+                    .insert(contract.contract.clone(), contract.cost);
             }
         }
 
@@ -55,8 +56,7 @@ impl Agent for CustomerAgent {
 
         let mut job = contract[0];
         for m in 1..anz_m {
-            start[job][m] =
-                start[job][m - 1] + self.time_matrix[job][m - 1];
+            start[job][m] = start[job][m - 1] + self.time_matrix[job][m - 1];
         }
 
         for j in 1..contract.len() {
@@ -67,15 +67,11 @@ impl Agent for CustomerAgent {
 
             loop {
                 delay_erhoehen = false;
-                start[job][0] =
-                    start[vorg][0] + self.time_matrix[vorg][0] + delay;
+                start[job][0] = start[vorg][0] + self.time_matrix[vorg][0] + delay;
 
                 for m in 1..anz_m {
-                    start[job][m] =
-                        start[job][m - 1] + self.time_matrix[job][m - 1];
-                    if start[job][m]
-                        < start[vorg][m] + self.time_matrix[vorg][m]
-                    {
+                    start[job][m] = start[job][m - 1] + self.time_matrix[job][m - 1];
+                    if start[job][m] < start[vorg][m] + self.time_matrix[vorg][m] {
                         delay_erhoehen = true;
                         delay += 1;
                         break;
@@ -95,9 +91,11 @@ impl Agent for CustomerAgent {
         final_time
     }
 
-    async fn evaluate_async(&mut self, contracts: &Vec<Contract>) -> Vec<CostContract> {
-
-        let costs: Vec<isize> = contracts.par_iter().map(|contract| self._eval(contract)).collect();
+    fn evaluate_sync(&mut self, contracts: &Vec<Contract>) -> Vec<CostContract> {
+        let costs: Vec<isize> = contracts
+            .iter()
+            .map(|contract| self._eval(contract))
+            .collect();
 
         let mut cost_contracts: Vec<CostContract> = Vec::new();
 
@@ -111,17 +109,41 @@ impl Agent for CustomerAgent {
 
         let round_best = cost_contracts.first().unwrap();
         self.best_round = Some(round_best.clone());
-        if self.best_global == None || round_best<self.best_global.as_ref().unwrap() {
+        if self.best_global == None || round_best < self.best_global.as_ref().unwrap() {
             self.best_global = Some(round_best.clone())
         }
-        
+
+        cost_contracts
+    }
+
+    fn evaluate_async(&mut self, contracts: &Vec<Contract>) -> Vec<CostContract> {
+        let costs: Vec<isize> = contracts
+            .par_iter()
+            .map(|contract| self._eval(contract))
+            .collect();
+
+        let mut cost_contracts: Vec<CostContract> = Vec::new();
+
+        for (index, contract) in contracts.iter().enumerate() {
+            let cost_contract = CostContract::new_filled(contract.clone(), costs[index], index);
+            cost_contracts.push(cost_contract);
+            //self.calculated_times.insert(contract.clone(), costs[index]);
+        }
+
+        cost_contracts.par_sort();
+
+        let round_best = cost_contracts.first().unwrap();
+        self.best_round = Some(round_best.clone());
+        if self.best_global == None || round_best < self.best_global.as_ref().unwrap() {
+            self.best_global = Some(round_best.clone())
+        }
+
         cost_contracts
     }
 
     fn get_round_best(&self) -> &CostContract {
         &self.best_round.as_ref().unwrap()
     }
-
 
     fn get_global_best(&self) -> &CostContract {
         &self.best_global.as_ref().unwrap()
@@ -148,6 +170,11 @@ impl CustomerAgent {
             }
         }
 
-        Ok(Self { time_matrix, calculated_times: HashMap::new(), best_global: None, best_round: None })
+        Ok(Self {
+            time_matrix,
+            calculated_times: HashMap::new(),
+            best_global: None,
+            best_round: None,
+        })
     }
 }
