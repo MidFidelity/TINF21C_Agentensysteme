@@ -48,7 +48,7 @@ public class Verhandlung {
         SplittableRandom rand = new SplittableRandom();
 
 
-        try (ExecutorService executor = Executors.newFixedThreadPool(5)){
+        try (ExecutorService executor = Executors.newFixedThreadPool(20)){
             agA = new SupplierAgent(new File("../data/daten3ASupplier_200.txt"));
             agB = new CustomerAgent(new File("../data/daten4BCustomer_200_5.txt"));
             med = new Mediator(agA.getContractSize(), agB.getContractSize(), generationsSize);

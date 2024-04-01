@@ -11,7 +11,7 @@ public class SupplierAgent extends Agent {
     Map<Contract, Integer> evaluatedCosts = Collections.synchronizedMap(new LinkedHashMap<Contract, Integer>(){
         @Override
         protected boolean removeEldestEntry(Map.Entry<Contract, Integer> eldest) {
-            return size() > 5_000_000;
+            return size() > 10_000_000;
         }
     });
 
