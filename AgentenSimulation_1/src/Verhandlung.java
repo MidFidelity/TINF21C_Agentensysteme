@@ -27,8 +27,8 @@ import java.util.concurrent.*;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 2000;
-    private static final int maxGenerations = 500;
+    private static final int generationsSize = 5_000;
+    private static final int maxGenerations = 3_000;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5;

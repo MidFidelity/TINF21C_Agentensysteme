@@ -7,7 +7,13 @@ import java.util.stream.Stream;
 public class SupplierAgent extends Agent {
 
     private final int[][] costMatrix;
-    Map<Contract, Integer> evaluatedCosts = new ConcurrentHashMap<>();
+    //Map<Contract, Integer> evaluatedCosts = new ConcurrentHashMap<>();
+    Map<Contract, Integer> evaluatedCosts = Collections.synchronizedMap(new LinkedHashMap<Contract, Integer>(){
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<Contract, Integer> eldest) {
+            return size() > 5_000_000;
+        }
+    });
 
     public SupplierAgent(File file) throws FileNotFoundException {
 
