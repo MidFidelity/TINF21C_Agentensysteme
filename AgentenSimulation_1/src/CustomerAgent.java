@@ -7,12 +7,16 @@ import java.util.stream.Stream;
 public class CustomerAgent extends Agent {
 
 	private final int[][] timeMatrix;	//Maybe replace with CopyOnWriteArrayList
+	Map<Contract, Integer> evaluatedTimes = new ConcurrentHashMap<>();
+	/*
 	Map<Contract, Integer> evaluatedTimes = Collections.synchronizedMap(new LinkedHashMap<Contract, Integer>(){
 		@Override
         protected boolean removeEldestEntry(Map.Entry<Contract, Integer> eldest) {
 			return size() > 10_000_000;
 		}
 	});
+
+	 */
 
 	public CustomerAgent(File file) throws FileNotFoundException {
 
@@ -66,6 +70,10 @@ public class CustomerAgent extends Agent {
 		}
 
 		setRound_best(temp.getFirst());
+		if (evaluatedTimes.size() > 7_500_000){
+			evaluatedTimes.clear();
+			System.out.println("Clear times Cache");
+		}
 
 		return result;
 	}

@@ -27,8 +27,8 @@ import java.util.concurrent.*;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 5_000;
-    private static final int maxGenerations = 3_000;
+    private static final int generationsSize = 500_000;
+    private static final int maxGenerations = 4000;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5;
@@ -38,6 +38,7 @@ public class Verhandlung {
     private static final double acceptanceRateGrowth = maxAcceptacneRate-minAcceptacneRate;
 
     public static void main(String[] args) {
+        final long completeRuntimeStart = System.nanoTime();
         Contract[] generation;
         Agent agA, agB;
         Mediator med;
@@ -261,6 +262,8 @@ public class Verhandlung {
                 generation = newGeneration;
             }
 
+            long CompleteRuntime = System.nanoTime() - completeRuntimeStart;
+
             System.out.print("""
                     ----------
                     Config
@@ -299,6 +302,12 @@ public class Verhandlung {
                     agB.printUtility(generation[0]).getCost(),
                     agA.printUtility(generation[0]).getCost() + agB.printUtility(generation[0]).getCost()
             );
+
+
+            // TimeUnit
+            long CompleteRuntimeMinutes = TimeUnit.MINUTES.convert(CompleteRuntime, TimeUnit.NANOSECONDS);
+            System.out.println("Complete Runtime: " + CompleteRuntimeMinutes + " min");
+
         } catch (FileNotFoundException | InterruptedException | ExecutionException e) {
             System.out.println(e.getMessage());
         }
