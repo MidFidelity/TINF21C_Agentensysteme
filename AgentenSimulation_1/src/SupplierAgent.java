@@ -8,6 +8,22 @@ public class SupplierAgent extends Agent {
 
     private final int[][] costMatrix;
     Map<Contract, Integer> evaluatedCosts = new ConcurrentHashMap<>();
+    /*
+    Map<Contract, Integer> evaluatedCosts = Collections.synchronizedMap(new LinkedHashMap<Contract, Integer>(){
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<Contract, Integer> eldest) {
+            return size() > 10_000_000;
+        }
+    });
+    /*
+    ConcurrentSkipListMap<String, String> cache = new ConcurrentSkipListMap<>();
+
+// Check if max size is reached before inserting something in it. Make some room for new entry.
+while (cache.size() >= maxSize) {
+    cache.pollFirstEntry();
+}
+     */
+
 
     public SupplierAgent(File file) throws FileNotFoundException {
 
@@ -63,6 +79,10 @@ public class SupplierAgent extends Agent {
         }
 
         setRound_best(temp.getFirst());
+        if (evaluatedCosts.size() > 7_500_000){
+            evaluatedCosts.clear();
+            System.out.println("Clear Costs Cache");
+        }
 
         return result;
 
