@@ -1,6 +1,5 @@
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.SplittableRandom;
 
 public class Contract {
@@ -32,17 +31,34 @@ public class Contract {
         this.contract = contract;
     }
 
-    public void mutate() {
+    public void swapMutateNeigh() {
         int[] contractArr = this.contract;
 
-        int start = rand.nextInt((contractArr.length - 1));
+        int start = rand.nextInt((contractArr.length - 1)); //upper bound exclusive
         int end = start + 1;
         int temp = contractArr[start];
         contractArr[start] = contractArr[end];
         contractArr[end] = temp;
     }
 
-    public Contract[] crossover(Contract contract){
+    public void swapMutateRand() {
+        int[] contractArr = this.contract;
+
+        int start = rand.nextInt((contractArr.length - 1));
+        int end = rand.nextInt((start + 1), contractArr.length);
+
+        //int start = rand.nextInt((contractArr.length - 2));
+        //int end = start + 1;
+        int temp = contractArr[start];
+        contractArr[start] = contractArr[end];
+        contractArr[end] = temp;
+    }
+
+    public void insertMutate() {
+
+    }
+
+    public Contract[] crossover(Contract contract) {
         return Crossover.cxOrdered(this, contract);
     }
 
