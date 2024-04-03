@@ -27,8 +27,8 @@ import java.util.concurrent.*;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 500_000;
-    private static final int maxGenerations = 4000;
+    private static final int generationsSize = 50_000;
+    private static final int maxGenerations = 1500;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5;
@@ -36,6 +36,7 @@ public class Verhandlung {
     private static final double minAcceptacneRate = 0.25;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate-minAcceptacneRate;
+    private static final double accepanceRateOffset = 0.05;
 
     public static void main(String[] args) {
         final long completeRuntimeStart = System.nanoTime();
@@ -48,8 +49,8 @@ public class Verhandlung {
         int mutationAmount = (int) (generationsSize * mutationRate);
         SplittableRandom rand = new SplittableRandom();
 
-
-        try (ExecutorService executor = Executors.newFixedThreadPool(20)){
+        int avpro = Runtime.getRuntime().availableProcessors();
+        try (ExecutorService executor = Executors.newFixedThreadPool(avpro)){
             agA = new SupplierAgent(new File("../data/daten3ASupplier_200.txt"));
             agB = new CustomerAgent(new File("../data/daten4BCustomer_200_5.txt"));
             med = new Mediator(agA.getContractSize(), agB.getContractSize(), generationsSize);
@@ -64,7 +65,8 @@ public class Verhandlung {
                                 (int) (generationsSize * minAcceptacneRate),
                                 (int) (generationsSize * (
                                         (1 - (((double) currentGeneration / maxGenerations)))
-                                                *acceptanceRateGrowth+minAcceptacneRate)
+                                                *(acceptanceRateGrowth+accepanceRateOffset)
+                                                +(minAcceptacneRate - accepanceRateOffset))
                                 )
                         ));
                 mutationAmount = Math.min((int) (generationsSize * mutationRate), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
@@ -161,16 +163,37 @@ public class Verhandlung {
 //                }
                 //System.out.println(whileCount);
 
-                Set<Contract> newGenerationHashSet = new HashSet<>();
+                Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
+                List<CompletableFuture<Void>> futures = new LinkedList<>();
                 int whileCount = 0;
                 while (newGenerationHashSet.size()<generationsSize && whileCount<generationsSize){
+                    futures.add(
+                            CompletableFuture.supplyAsync(()->{
+                                Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
+                                Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
+                                Contract[] childs = parent1.crossover(parent2);
+
+                                newGenerationHashSet.add(childs[0]);
+                                newGenerationHashSet.add(childs[1]);
+                                return null;
+                            }, executor)
+                    );
+                    whileCount++;
+/*
                     Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
                     Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
                     Contract[] childs = parent1.crossover(parent2);
                     newGenerationHashSet.add(childs[0]);
                     newGenerationHashSet.add(childs[1]);
                     whileCount++;
+ */
                 }
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+                for (Future<?> f : futures) {
+                    f.get();
+                }
+                //CompletableFuture.allOf(futures.toArray(new Future<?>[0]).get();
 
                 //if not enough contract after 10.000 try just fill with random - just for the sake of runtime
                 while (newGenerationHashSet.size() < generationsSize) {
