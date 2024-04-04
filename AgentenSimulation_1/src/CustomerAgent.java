@@ -70,7 +70,7 @@ public class CustomerAgent extends Agent {
 		}
 
 		setRound_best(temp.getFirst());
-		if (evaluatedTimes.size() > 7_500_000){
+		if (evaluatedTimes.size() > contracts.length*50){
 			evaluatedTimes.clear();
 			System.out.println("Clear times Cache");
 		}

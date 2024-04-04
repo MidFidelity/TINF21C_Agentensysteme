@@ -27,13 +27,16 @@ import java.util.concurrent.*;
 
 public class Verhandlung {
 
-    private static final int generationsSize = 150_000;
+    private static final int generationsSize = 100_000;
     private static final int maxGenerations = 1000;
 
     private static final double infillRate = 0.05;
-    private static final double mutationRate = 0.5;
+    private static final double mutationRateStart = 0.5;
+    private static final double mutationRateMax = 5;
+    private static final double mutationRateTurningPoint = 0.9;
 
-    private static final double minAcceptacneRate = 0.05;
+
+    private static final double minAcceptacneRate = 0.04;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
@@ -46,7 +49,8 @@ public class Verhandlung {
         int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
         //int currentInfill = (int) (generationsSize * infillRate);
         int currentInfill = 0;
-        int mutationAmount = (int) (generationsSize * mutationRate);
+        int mutationAmount = (int) (generationsSize * mutationRateStart);
+        //double mutationRate = mutationRateStart;
         SplittableRandom rand = new SplittableRandom();
 
         int avpro = Runtime.getRuntime().availableProcessors();
@@ -60,6 +64,7 @@ public class Verhandlung {
             //Verhandlung initialisieren
             generation = med.initContract();
 
+            Set<Contract> knownBadContracts = ConcurrentHashMap.newKeySet();
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
                 final double generationProgress = (double) currentGeneration / maxGenerations;
                 currentAcceptanceAmount = Math.min(
@@ -72,7 +77,22 @@ public class Verhandlung {
                                                 + (minAcceptacneRate - accepanceRateOffset))
                                 )
                         ));
-                mutationAmount = Math.min((int) (generationsSize * mutationRate), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
+
+                double mutationRate;
+                if(currentGeneration > mutationRateTurningPoint*maxGenerations){
+                    //declining
+                    mutationRate = ((currentGeneration-maxGenerations*mutationRateTurningPoint)*-1 /(maxGenerations*(1-mutationRateTurningPoint)))*
+                            (mutationRateMax-mutationRateStart)+mutationRateMax;
+                }else {
+                    //climbing
+                    mutationRate = ((double) currentGeneration /(maxGenerations*mutationRateTurningPoint))*
+                            (mutationRateMax-mutationRateStart)+mutationRateStart;
+                }
+                System.out.println(mutationRate);
+
+                mutationAmount = Math.min((int) (generationsSize * mutationRateStart),
+                        (int) (generationsSize * 10 * (((double) currentGeneration / maxGenerations)*mutationRateStart+mutationRateStart)));
+                //double mutationRate = (((double) currentGeneration / maxGenerations)*mutationRateStart+mutationRateStart)*2;
                 //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
 
@@ -94,36 +114,19 @@ public class Verhandlung {
 
                 long voteTime = System.nanoTime() - startTime;
                 ArrayList<Contract> intersect = new ArrayList<>();
-                ArrayList<Contract> singleVote = new ArrayList<>();
 
-
+                if(knownBadContracts.size() > (maxGenerations*0.1)*generationsSize){
+                    knownBadContracts.clear();
+                    System.out.println("Known Bad Cleared");
+                }
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteA[i] && voteB[i]) {
                         intersect.add(generation[i]);
-                    } else if (voteA[i] || voteB[i]) {
-                        singleVote.add(generation[i]);
+                    } else {
+                        knownBadContracts.add(generation[i]);
                     }
                 }
                 int intersectSize = intersect.size();
-
-                /*
-                int RandomInfillIntersect = 0;
-                for (int i = lastRoundRandomBegin; i < generationsSize; i++) {
-                    if (voteA[i] && voteB[i]) {
-                        RandomInfillIntersect++;
-                    }
-                }
-                System.out.println(RandomInfillIntersect);
-                 /*
-                for (int i = 0; i < generationsSize; i++) {
-                    if (voteB[i]) {
-                        intersect.add(generation[i]);
-                    } else if (voteA[i]) {
-                        singleVote.add(generation[i]);
-
-                    }
-                }
-                 */
 
                 //Contract[] newGeneration = new Contract[generationsSize];
                 if (intersect.isEmpty()) {
@@ -131,7 +134,6 @@ public class Verhandlung {
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
                 }
                 Collections.shuffle(intersect);
-                Collections.shuffle(singleVote);
 
                 Contract printIntersect = intersect.getFirst();
 
@@ -147,23 +149,7 @@ public class Verhandlung {
 //                }
 //                Collections.shuffle(cartesianProduct);
 
-                // Determine the number of available processors (cores)
 
-                // Create an ExecutorService with a fixed thread pool using all available processors
-
-//                Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
-//                int whileCount = 0;
-//                while (newGenerationHashSet.size()<generationsSize && whileCount<10000){
-//                    executor.execute(() -> {
-//                        Contract[] parents = cartesianProduct.get(newGenerationHashSet.size() % cartesianProduct.size());
-//                        Contract[] childs = Crossover.cxOrdered(parents[0], parents[1]);
-//
-//                        newGenerationHashSet.add(childs[0]);
-//                        newGenerationHashSet.add(childs[1]);
-//
-//                    });
-//                    whileCount++;
-//                }
                 //System.out.println(whileCount);
 
                 Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
@@ -179,8 +165,19 @@ public class Verhandlung {
                                     Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
                                     Contract[] childs = parent1.crossover(parent2);
 
-                                    newGenerationHashSet.add(childs[0]);
-                                    newGenerationHashSet.add(childs[1]);
+                                    if(mutationRate>rand.nextDouble(mutationRateMax)){
+                                        for (int i = 0; i < Math.round(mutationRate); i++) {
+                                            childs[0].swapMutateRand();
+                                            childs[1].swapMutateRand();
+                                        }
+                                    }
+
+                                    if(!knownBadContracts.contains(childs[0])){
+                                        newGenerationHashSet.add(childs[0]);
+                                    }
+                                    if(!knownBadContracts.contains(childs[1])){
+                                        newGenerationHashSet.add(childs[1]);
+                                    }
                                     if (generationProgress > 0.8) {
                                         newGenerationHashSet.add(parent1);
                                         newGenerationHashSet.add(parent2);
@@ -242,10 +239,13 @@ public class Verhandlung {
                 Contract[] newGeneration = newGenerationHashSet.toArray(Contract[]::new);
 
                 // Mutate
+                /*
                 for (int i = 0; i < mutationAmount; i++) {
                     int contractIndexToMutate = rand.nextInt(generationsSize);
                     newGeneration[contractIndexToMutate].swapMutateRand();
                 }
+
+                 */
 
                 //reevaluate
                 generation = newGeneration;
@@ -309,7 +309,7 @@ public class Verhandlung {
                                                         
                             """,
                     maxGenerations, generationsSize,
-                    infillRate, mutationRate,
+                    infillRate, mutationRateStart,
                     minAcceptacneRate, acceptanceRateGrowth
             );
             System.out.print("""
