@@ -26,17 +26,17 @@ import java.util.concurrent.*;
 
 
 public class Verhandlung {
-
-    private static final int generationsSize = 100_000;
-    private static final int maxGenerations = 1000;
+    //No fixed values - must be dependent on generationSize OR be percentage Value
+    public static final int generationsSize = 40_000;
+    private static final int maxGenerations = 2_000;
 
     private static final double infillRate = 0.05;
-    private static final double mutationRateStart = 0.5;
-    private static final double mutationRateMax = 2;
-    private static final double mutationRateTurningPoint = 0.8;
+    private static final double mutationRateMin = 0.7;
+    private static final double mutationRateMax = 1;//generationsSize * 0.00006;
+    private static final double mutationRateTurningPoint = 0.6;
 
 
-    private static final double minAcceptacneRate = 0.04;
+    private static final double minAcceptacneRate = 0.2;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
@@ -78,7 +78,7 @@ public class Verhandlung {
                 double mutationRate = getMutationRate(currentGeneration);
                 //System.out.println(mutationRate);
 
-                //double mutationRate = (((double) currentGeneration / maxGenerations)*mutationRateStart+mutationRateStart)*2;
+                //double mutationRate = (((double) currentGeneration / maxGenerations)*mutationRateMin+mutationRateMin)*2;
                 //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
 
@@ -96,6 +96,7 @@ public class Verhandlung {
 
                 long voteTime = System.nanoTime() - startTime;
                 ArrayList<Contract> intersect = new ArrayList<>();
+                ArrayList<Contract> singleIntersect = new ArrayList<>();
 
                 if (knownBadContracts.size() > (maxGenerations * 0.1) * generationsSize) {
                     knownBadContracts.clear();
@@ -103,23 +104,65 @@ public class Verhandlung {
                 }
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteA[i] && voteB[i]) {
-                        intersect.add(generation[i]);
+                        intersect.add(generation[i]);       //Steady State GA
+                    } else if (voteA[i] || voteB[i]) {
+                        singleIntersect.add(generation[i]);
                     } else {
                         knownBadContracts.add(generation[i]);
                     }
                 }
                 int intersectSize = intersect.size();
 
-                //Contract[] newGeneration = new Contract[generationsSize];
+                //Get best 10% of intersect
+                ArrayList<Contract> bestIntersect = new ArrayList<>();
+                CompletableFuture<boolean[]> voteAFutureBest = CompletableFuture.supplyAsync(() -> agA.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
+                CompletableFuture<boolean[]> voteBFutureBest = CompletableFuture.supplyAsync(() -> agB.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
+
+                CompletableFuture.allOf(voteAFutureBest, voteBFutureBest).join();
+
+                boolean[] voteABest = voteAFuture.get();
+                boolean[] voteBBest = voteBFuture.get();
+                for (int i = 0; i < generationsSize; i++) {
+                    if (voteABest[i] && voteBBest[i]) {
+                        bestIntersect.add(generation[i]);       //Steady State GA
+                        bestIntersect.add(generation[i]);
+                    } else if (voteABest[i] || voteBBest[i]) {
+                        bestIntersect.add(generation[i]);
+                    }
+                }
+
                 if (intersect.isEmpty()) {
                     //TODO
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
                 }
                 Collections.shuffle(intersect);
-
+                Collections.shuffle(singleIntersect);
                 Contract printIntersect = intersect.getFirst();
 
                 Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
+
+                //reintroduce singleIntersect for CrossOver to reduce Selektionsdruck
+                List<Contract> proportionalCrossOverSelektion = new ArrayList<>(intersect);
+                proportionalCrossOverSelektion.addAll(bestIntersect);
+                proportionalCrossOverSelektion.addAll(bestIntersect);
+                /*
+                if ((double) currentAcceptanceAmount /currentGeneration < 0.3) {
+                    int intersectRepeat = (((int) ((double) singleIntersect.size() / intersectSize)) + 1) * 2;
+                    for (int i = 0; i < intersectRepeat; i++) {
+                        proportionalCrossOverSelektion.addAll(intersect);
+                    }
+                    proportionalCrossOverSelektion.addAll(singleIntersect);
+                    //ratio in proportionalCrossOverSelektion intersect 2 : singleIntersect 1
+                    //proportionalCrossOverSelektion.addAll(singleIntersect.subList(0, (intersectSize/2)));
+                    //Not all single Intersects are kept - losing purpose?
+                    // better add intersect multiple times?
+                } else {
+
+                    //newGenerationHashSet.addAll(intersect);
+                }
+
+                 */
+
                 List<CompletableFuture<Void>> futures = new LinkedList<>();
                 int whileCount = 0;
                 while (newGenerationHashSet.size() < generationsSize && whileCount < generationsSize * 3) {
@@ -128,10 +171,11 @@ public class Verhandlung {
                     while (newGenerationHashSet.size() < generationsSize && innerWhileCount < (generationsSize - newGenerationHashSetStartsize)) {
                         futures.add(
                                 CompletableFuture.supplyAsync(() -> {
-                                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
-                                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
+                                    Contract parent1 = proportionalCrossOverSelektion.get(rand.nextInt(proportionalCrossOverSelektion.size()));
+                                    Contract parent2 = proportionalCrossOverSelektion.get(rand.nextInt(proportionalCrossOverSelektion.size()));
                                     Contract[] childs = parent1.crossover(parent2);
 
+                                    /*
                                     if (mutationRate > rand.nextDouble(mutationRateMax)) {
                                         for (int i = 0; i < Math.round(mutationRate); i++) {
                                             childs[0].swapMutateRand();
@@ -139,15 +183,13 @@ public class Verhandlung {
                                         }
                                     }
 
+                                     */
+
                                     if (!knownBadContracts.contains(childs[0])) {
                                         newGenerationHashSet.add(childs[0]);
                                     }
                                     if (!knownBadContracts.contains(childs[1])) {
                                         newGenerationHashSet.add(childs[1]);
-                                    }
-                                    if (generationProgress > 0.8) {
-                                        newGenerationHashSet.add(parent1);
-                                        newGenerationHashSet.add(parent2);
                                     }
 
                                     return null;
@@ -155,14 +197,6 @@ public class Verhandlung {
                         );
                         whileCount++;
                         innerWhileCount++;
-/*
-                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
-                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
-                    Contract[] childs = parent1.crossover(parent2);
-                    newGenerationHashSet.add(childs[0]);
-                    newGenerationHashSet.add(childs[1]);
-                    whileCount++;
- */
                     }
                     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
                 }
@@ -173,16 +207,18 @@ public class Verhandlung {
                     newGenerationHashSet.addAll(Arrays.stream(med.getRandomContracts(generationsSize - newGenerationHashSet.size())).toList());
                 }
 
+                int mutationAmount = (int) (generationsSize * mutationRate);
+                generation = newGenerationHashSet.toArray(Contract[]::new);
+
                 // Mutate
-                /*
                 for (int i = 0; i < mutationAmount; i++) {
                     int contractIndexToMutate = rand.nextInt(generationsSize);
-                    newGeneration[contractIndexToMutate].swapMutateRand();
+                    generation[contractIndexToMutate].swapMutateRand();
                 }
-                 */
+
 
                 //reevaluate
-                generation = newGenerationHashSet.toArray(Contract[]::new);
+
 
                 System.out.printf("%4d: Best A: %5d \t Best B: %5d \t AccAmount: %4d \t Intersect: %4d \t Contract: %5d %5d",
                         currentGeneration,
@@ -243,7 +279,7 @@ public class Verhandlung {
                                                         
                             """,
                     maxGenerations, generationsSize,
-                    infillRate, mutationRateStart,
+                    infillRate, mutationRateMin,
                     minAcceptacneRate, acceptanceRateGrowth
             );
             System.out.print("""
@@ -284,11 +320,11 @@ public class Verhandlung {
         if (currentGeneration > mutationRateTurningPoint * maxGenerations) {
             //declining
             mutationRate = ((currentGeneration - maxGenerations * mutationRateTurningPoint) * -1 / (maxGenerations * (1 - mutationRateTurningPoint))) *
-                    (mutationRateMax - mutationRateStart) + mutationRateMax;
+                    (mutationRateMax - mutationRateMin) + mutationRateMax;
         } else {
             //climbing
             mutationRate = ((double) currentGeneration / (maxGenerations * mutationRateTurningPoint)) *
-                    (mutationRateMax - mutationRateStart) + mutationRateStart;
+                    (mutationRateMax - mutationRateMin) + mutationRateMin;
         }
         return mutationRate;
     }
