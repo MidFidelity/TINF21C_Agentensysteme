@@ -5,7 +5,6 @@ mod mediator;
 mod supplier_agent;
 
 use std::collections::HashSet;
-use std::fs::File;
 
 use crate::agent::Agent;
 use crate::contract::Contract;
@@ -138,11 +137,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    println!("----------\nChanging to Terminal Phase\n----------");
-    
+    println!("----------\nChanging to Ageed Elimination Phase\n----------");
+
+    while generation.len()>1000 {
+        print!("\x1b[2K \x1b[1G Remaining Contracts: {}", generation.len());
+        let vote_a = ag_a.vote_many(&generation, (generation.len()/2));
+
+        let vote_b = ag_b.vote_many(&generation, (generation.len()/2));
+
+        let mut intersect_i: Vec<usize> = Vec::new();
+        
+        for i in 0..vote_a.len() {
+            if vote_a[i] && vote_b[i] {
+                intersect_i.push(i);
+            }
+        }
+
+        if intersect_i.len() == 0 {
+            break;
+        }
+
+        intersect_i = intersect_i.into_iter().rev().collect();
+
+        let mut new_generation:Vec<Contract> = Vec::new();
+        
+        let mut current_intersect:Option<usize> = intersect_i.pop();
+        
+        for (index, contract) in generation.into_iter().enumerate() {
+            if current_intersect != None && index == current_intersect.unwrap(){
+                current_intersect = intersect_i.pop();
+                new_generation.push(contract);
+            }
+        }
+        
+        generation = new_generation
+    }
+    println!();
+    println!("----------\nChanging to Removal Phase\n----------");
     
     let mut generation_set :HashSet<Contract>= HashSet::from_iter(generation.into_iter());
-
     
     while generation_set.len() > 1 {
         if generation_set.len() % 2 == 0 {
