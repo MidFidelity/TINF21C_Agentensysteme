@@ -19,15 +19,7 @@ public class Mediator {
 	}
 	
 	public Contract[] initContract(){
-		Contract[] contracts = new Contract[generationSize];
-
-		List<Integer> contract = IntStream.range(0,contractSize).boxed().collect(Collectors.toList());
-		for (int i = 0; i <generationSize; i++) {
-			Collections.shuffle(contract);
-			contracts[i] = new Contract(contract.stream().mapToInt(Integer::intValue).toArray());
-		}
-
-		return contracts;
+		return getRandomContracts(generationSize);
 	}
 
 	public Contract[] getRandomContracts(int count){
