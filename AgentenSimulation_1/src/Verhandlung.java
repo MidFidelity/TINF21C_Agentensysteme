@@ -26,8 +26,10 @@ import java.util.concurrent.*;
 
 
 public class Verhandlung {
+    public static final long maxMemBytes = Runtime.getRuntime().maxMemory();
+    public static final int ContractObjectMemSizeBytes = 985;
 
-    private static final int generationsSize = 150_000;
+    private static final int generationsSize = 100_000;
     private static final int maxGenerations = 1000;
 
     private static final double infillRate = 0.05;
@@ -40,7 +42,7 @@ public class Verhandlung {
 
     public static void main(String[] args) {
         final long completeRuntimeStart = System.nanoTime();
-        Contract[] generation;
+        Contract[] generation;  //ein Contract Object ~971 bytes bei int[200]
         Agent agA, agB;
         Mediator med;
         int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
