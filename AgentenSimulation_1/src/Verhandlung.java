@@ -29,13 +29,14 @@ public class Verhandlung {
     public static final long maxMemBytes = Runtime.getRuntime().maxMemory();
     public static final int ContractObjectMemSizeBytes = 985;
 
-    private static final int generationsSize = 100_000;
+    //Hyperparameter
+    private static final int generationsSize = 150_000;
     private static final int maxGenerations = 1000;
 
     private static final double infillRate = 0.05;
-    private static final double mutationRate = 0.5;
+    private static final double mutationRate = 0.5; //increases to 1 during runtime
 
-    private static final double minAcceptacneRate = 0.05;
+    private static final double minAcceptacneRate = 0.03;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
@@ -64,7 +65,7 @@ public class Verhandlung {
             Set<Contract> knownBadContracts = ConcurrentHashMap.newKeySet();
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
-                //Step1: Update Relevant Variables for Simulated aneling
+                //Step1: Update Relevant Variables for usage of simulated annealing
                 final double generationProgress = (double) currentGeneration / maxGenerations;
                 currentAcceptanceAmount = Math.min(
                         (int) ((double) generationsSize * maxAcceptacneRate),
@@ -80,15 +81,15 @@ public class Verhandlung {
                 //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
                 if ((long)knownBadContracts.size() * ContractObjectMemSizeBytes > (double)maxMemBytes*0.3) {  //Max 30% of Heap Space
-                    knownBadContracts.clear();
+                    knownBadContracts.clear();  //Clearing Memmory
                     System.out.println("Known Bad Cleared");
                 }
 
 
                 /*Step 2: Let Agents vote on the generation
                     Return which Contracts are wanted by the Agents
-                    Primarily using intersect to move forwarard -> Steady State GA
-                    Filter out known bad contracts -> not shown again to agent
+                    Primarily using intersect to move forward -> Steady State GA
+                    Filter out known bad contracts -> not shown again to agent -> more/ better contracts can be shown
                  */
                 long startTime = System.nanoTime();
 
@@ -114,15 +115,13 @@ public class Verhandlung {
                 }
                 int intersectSize = intersect.size();
 
-                //Contract[] newGeneration = new Contract[generationsSize];
                 if (intersect.isEmpty()) {
                     //TODO
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
                 }
-                //Collections.shuffle(intersect);
                 Contract printIntersect = intersect.getFirst();
 
-                //Get best 10% of intersect
+                //Get best 10% of intersect -> can be used for a higher selection probability for these Contracts
                 ArrayList<Contract> bestIntersect = new ArrayList<>();
                 CompletableFuture<boolean[]> voteAFutureBest = CompletableFuture.supplyAsync(() -> agA.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
                 CompletableFuture<boolean[]> voteBFutureBest = CompletableFuture.supplyAsync(() -> agB.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
@@ -139,6 +138,7 @@ public class Verhandlung {
                     }
                 }
 
+                //List of all the valid Contracts that are used for Mating (with right Probabilities)
                 List<Contract> proportionalCrossOverSelektion = new ArrayList<>(intersect);
                 proportionalCrossOverSelektion.addAll(bestIntersect);
                 //proportionalCrossOverSelektion.addAll(bestIntersect);
@@ -183,23 +183,21 @@ public class Verhandlung {
                     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
                 }
 
-                //if not enough contract after 10.000 try just fill with random - just for the sake of runtime
+                //if not enough contract after (generationsSize * 3) try just fill with random - just for the sake of runtime
                 while (newGenerationHashSet.size() < generationsSize) {
                     newGenerationHashSet.addAll(Arrays.stream(med.getRandomContracts(generationsSize - newGenerationHashSet.size())).toList());
                 }
 
-
-                Contract[] newGeneration = newGenerationHashSet.toArray(Contract[]::new);
+                //Overwrite old generation Array -> mutation will happen afterward to reduce memory footprint
+                generation = newGenerationHashSet.toArray(Contract[]::new);
 
                 // Mutate
                 for (int i = 0; i < mutationAmount; i++) {
                     int contractIndexToMutate = rand.nextInt(generationsSize);
-                    newGeneration[contractIndexToMutate].swapMutateRand();
+                    generation[contractIndexToMutate].swapMutateRand();
                 }
 
-                //reevaluate
-                generation = newGeneration;
-
+                
                 System.out.printf("%4d: Best A: %5d \t Best B: %5d \t AccAmount: %4d \t Intersect: %4d \t Contract: %5d %5d",
                         currentGeneration,
                         agA.getRound_best().getCost(), agB.getRound_best().getCost(),
