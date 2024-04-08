@@ -130,6 +130,10 @@ public class Verhandlung {
                  */
 
                 Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
+                if (generationProgress > 0.8) {
+                    newGenerationHashSet.addAll(intersect);
+                }
+
                 List<CompletableFuture<Void>> futures = new LinkedList<>();
                 int whileCount = 0;
                 while (newGenerationHashSet.size() < generationsSize && whileCount < generationsSize * 3) {
@@ -147,10 +151,6 @@ public class Verhandlung {
                                     }
                                     if(!knownBadContracts.contains(childs[1])){
                                         newGenerationHashSet.add(childs[1]);
-                                    }
-                                    if (generationProgress > 0.8) {
-                                        newGenerationHashSet.add(parent1);
-                                        newGenerationHashSet.add(parent2);
                                     }
 
                                     return null;
