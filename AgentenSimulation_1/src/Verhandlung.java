@@ -27,23 +27,27 @@ import java.util.concurrent.*;
 
 public class Verhandlung {
     //No fixed values - must be dependent on generationSize OR be percentage Value
-    public static final int generationsSize = 30_000;
-    private static final int maxGenerations = 1_500;
+    public static final int generationsSize = 400_000;
+    private static final int maxGenerations = 2000;
 
     private static final double infillRate = 0.05;
-    private static final double mutationRateMin = 0.5;
-    private static final double mutationRateMax = 3;//generationsSize * 0.00006;
-    private static final double mutationRateTurningPoint = 0.9999;
+    private static final double mutationRateMin = 0.4;
+    private static final double mutationRateMax = 1;//generationsSize * 0.00006;
+    private static final double mutationRateTurningPoint = 0.99;
 
 
-    private static final double minAcceptacneRate = 0.05;
+    private static final double minAcceptacneRate = 0.03;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
 
+    public static final long maxMemBytes = Runtime.getRuntime().maxMemory();
+    public static final int ContractObjectMemSizeBytes = 985;
+
     public static void main(String[] args) {
+        System.out.println(maxMemBytes);
         final long completeRuntimeStart = System.nanoTime();
-        Contract[] generation;
+        Contract[] generation;  //ein Contract Object ~971 bytes bei int[200]
         Agent agA, agB;
         Mediator med;
         int currentAcceptanceAmount = (int) (generationsSize * 0.77);//0.77
@@ -82,7 +86,7 @@ public class Verhandlung {
                 mutationAmount = mutationRate * generationsSize;
                 //System.out.println(mutationRate);
 
-                if (knownBadContracts.size() > (maxGenerations * 0.1) * generationsSize) {
+                if ((long)knownBadContracts.size() * ContractObjectMemSizeBytes > (double)maxMemBytes*0.3) {  //Max 30% of Heap Space
                     knownBadContracts.clear();
                     System.out.println("Known Bad Cleared");
                 }
@@ -151,7 +155,7 @@ public class Verhandlung {
                 //subset of interect -> best contracts added twice really great ones already added twice to bestIntersect
 
                 //Add this Points all Parents should be relatively great
-                if(generationProgress > 0.8){
+                if(generationProgress > 1){
                     newGenerationHashSet.addAll(intersect);
                 }
 
