@@ -61,8 +61,10 @@ public class Verhandlung {
 
             //Verhandlung initialisieren
             generation = med.initContract();
+            Set<Contract> knownBadContracts = ConcurrentHashMap.newKeySet();
 
             for (int currentGeneration = 0; currentGeneration < maxGenerations; currentGeneration++) {
+                //Step1: Update Relevant Variables for Simulated aneling
                 final double generationProgress = (double) currentGeneration / maxGenerations;
                 currentAcceptanceAmount = Math.min(
                         (int) ((double) generationsSize * maxAcceptacneRate),
@@ -77,12 +79,18 @@ public class Verhandlung {
                 mutationAmount = Math.min((int) (generationsSize * mutationRate), (int) (generationsSize * (((double) currentGeneration / maxGenerations))));
                 //currentInfill = Math.min((int) (generationsSize * 0.7), (int) ((generationsSize * (((double) currentGeneration / maxGenerations)))*0.3));
 
+                if ((long)knownBadContracts.size() * ContractObjectMemSizeBytes > (double)maxMemBytes*0.3) {  //Max 30% of Heap Space
+                    knownBadContracts.clear();
+                    System.out.println("Known Bad Cleared");
+                }
 
+
+                /*Step 2: Let Agents vote on the generation
+                    Return which Contracts are wanted by the Agents
+                    Primarily using intersect to move forwarard -> Steady State GA
+                    Filter out known bad contracts -> not shown again to agent
+                 */
                 long startTime = System.nanoTime();
-
-
-//                boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
-//                boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
 
                 int finalCurrentAcceptanceAmount = currentAcceptanceAmount;
                 Contract[] finalGeneration = generation;
@@ -90,42 +98,21 @@ public class Verhandlung {
                 CompletableFuture<boolean[]> voteBFuture = CompletableFuture.supplyAsync(() -> agB.voteLoop(finalGeneration, finalCurrentAcceptanceAmount), executor);
 
                 CompletableFuture.allOf(voteAFuture, voteBFuture).join();
-
                 boolean[] voteA = voteAFuture.get();
                 boolean[] voteB = voteBFuture.get();
 
                 long voteTime = System.nanoTime() - startTime;
                 ArrayList<Contract> intersect = new ArrayList<>();
-                ArrayList<Contract> singleVote = new ArrayList<>();
 
 
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteA[i] && voteB[i]) {
                         intersect.add(generation[i]);
-                    } else if (voteA[i] || voteB[i]) {
-                        singleVote.add(generation[i]);
+                    } else if (!voteA[i] && !voteB[i]) {
+                        knownBadContracts.add(generation[i]);   //Just store the ones no agents want
                     }
                 }
                 int intersectSize = intersect.size();
-
-                /*
-                int RandomInfillIntersect = 0;
-                for (int i = lastRoundRandomBegin; i < generationsSize; i++) {
-                    if (voteA[i] && voteB[i]) {
-                        RandomInfillIntersect++;
-                    }
-                }
-                System.out.println(RandomInfillIntersect);
-                 /*
-                for (int i = 0; i < generationsSize; i++) {
-                    if (voteB[i]) {
-                        intersect.add(generation[i]);
-                    } else if (voteA[i]) {
-                        singleVote.add(generation[i]);
-
-                    }
-                }
-                 */
 
                 //Contract[] newGeneration = new Contract[generationsSize];
                 if (intersect.isEmpty()) {
@@ -133,40 +120,14 @@ public class Verhandlung {
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
                 }
                 Collections.shuffle(intersect);
-                Collections.shuffle(singleVote);
 
                 Contract printIntersect = intersect.getFirst();
 
-                //int currentNewGenerationCount = 0;
-                //use intersect (both want it)
-//                SplittableRandom rand = new SplittableRandom();
-//
-//                List<Contract[]> cartesianProduct = new LinkedList<>();
-//                for (int i = 0; i < intersect.size(); i++) {
-//                    for (Contract contract : intersect) {
-//                        cartesianProduct.add(new Contract[]{intersect.get(i), contract});
-//                    }
-//                }
-//                Collections.shuffle(cartesianProduct);
-
-                // Determine the number of available processors (cores)
-
-                // Create an ExecutorService with a fixed thread pool using all available processors
-
-//                Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
-//                int whileCount = 0;
-//                while (newGenerationHashSet.size()<generationsSize && whileCount<10000){
-//                    executor.execute(() -> {
-//                        Contract[] parents = cartesianProduct.get(newGenerationHashSet.size() % cartesianProduct.size());
-//                        Contract[] childs = Crossover.cxOrdered(parents[0], parents[1]);
-//
-//                        newGenerationHashSet.add(childs[0]);
-//                        newGenerationHashSet.add(childs[1]);
-//
-//                    });
-//                    whileCount++;
-//                }
-                //System.out.println(whileCount);
+                /*
+                Step 3: Create new Generation
+                    - CrossOver
+                    - Mutation
+                 */
 
                 Set<Contract> newGenerationHashSet = ConcurrentHashMap.newKeySet();
                 List<CompletableFuture<Void>> futures = new LinkedList<>();
@@ -181,8 +142,12 @@ public class Verhandlung {
                                     Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
                                     Contract[] childs = parent1.crossover(parent2);
 
-                                    newGenerationHashSet.add(childs[0]);
-                                    newGenerationHashSet.add(childs[1]);
+                                    if(!knownBadContracts.contains(childs[0])){
+                                        newGenerationHashSet.add(childs[0]);
+                                    }
+                                    if(!knownBadContracts.contains(childs[1])){
+                                        newGenerationHashSet.add(childs[1]);
+                                    }
                                     if (generationProgress > 0.8) {
                                         newGenerationHashSet.add(parent1);
                                         newGenerationHashSet.add(parent2);
@@ -193,53 +158,15 @@ public class Verhandlung {
                         );
                         whileCount++;
                         innerWhileCount++;
-/*
-                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
-                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
-                    Contract[] childs = parent1.crossover(parent2);
-                    newGenerationHashSet.add(childs[0]);
-                    newGenerationHashSet.add(childs[1]);
-                    whileCount++;
- */
                     }
                     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
                 }
-                //CompletableFuture.allOf(futures.toArray(new Future<?>[0]).get();
 
                 //if not enough contract after 10.000 try just fill with random - just for the sake of runtime
                 while (newGenerationHashSet.size() < generationsSize) {
                     newGenerationHashSet.addAll(Arrays.stream(med.getRandomContracts(generationsSize - newGenerationHashSet.size())).toList());
                 }
-                /*
-                while (currentNewGenerationCount < (generationsSize - currentInfill)) {
-                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
-                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
-                    Contract[] childs = Crossover.cxOrdered(parent1, parent2);
 
-
-                    newGeneration[currentNewGenerationCount] = childs[0];
-                    newGeneration[currentNewGenerationCount + 1] = childs[1];
-
-                    currentNewGenerationCount += 2;
-                }
-
-                List<Contract> newGenerationList = new ArrayList<>();
-                newGenerationList.addAll(List.of(Arrays.copyOfRange(newGeneration, 0, currentNewGenerationCount)));
-
-                newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
-
-                lastRoundRandomBegin = newGenerationList.size();
-
-                while (newGenerationList.size() < generationsSize) {
-                    //If not enough contract fill with random
-
-                    newGenerationList.addAll(Arrays.stream(med.getRandomContracts(generationsSize - newGenerationList.size())).toList());
-                    //System.arraycopy(newGeneration, currentNewGenerationCount, newRandom, 0, newRandom.length);
-
-                    newGenerationList = newGenerationList.stream().unordered().parallel().distinct().collect(Collectors.toCollection(ArrayList::new));
-                }
-
-                 */
 
                 Contract[] newGeneration = newGenerationHashSet.toArray(Contract[]::new);
 

@@ -79,7 +79,7 @@ while (cache.size() >= maxSize) {
         }
 
         setRound_best(temp.getFirst());
-        if (((long) evaluatedCosts.size()*Verhandlung.ContractObjectMemSizeBytes) > ((double)Verhandlung.maxMemBytes*0.45)){
+        if (((long) evaluatedCosts.size()*Verhandlung.ContractObjectMemSizeBytes) > ((double)Verhandlung.maxMemBytes*0.3)){
             evaluatedCosts.clear();
             System.out.println("Clear Costs Cache");
         }

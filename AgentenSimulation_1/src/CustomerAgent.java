@@ -70,7 +70,7 @@ public class CustomerAgent extends Agent {
 		}
 
 		setRound_best(temp.getFirst());
-		if (((long) evaluatedTimes.size()*Verhandlung.ContractObjectMemSizeBytes) > ((double)Verhandlung.maxMemBytes*0.45)){
+		if (((long) evaluatedTimes.size()*Verhandlung.ContractObjectMemSizeBytes) > ((double)Verhandlung.maxMemBytes*0.3)){
 			evaluatedTimes.clear();
 			System.out.println("Clear times Cache");
 		}
