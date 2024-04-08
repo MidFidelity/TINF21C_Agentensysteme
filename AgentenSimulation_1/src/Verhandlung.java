@@ -119,9 +119,30 @@ public class Verhandlung {
                     //TODO
                     throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
                 }
-                Collections.shuffle(intersect);
-
+                //Collections.shuffle(intersect);
                 Contract printIntersect = intersect.getFirst();
+
+                //Get best 10% of intersect
+                ArrayList<Contract> bestIntersect = new ArrayList<>();
+                CompletableFuture<boolean[]> voteAFutureBest = CompletableFuture.supplyAsync(() -> agA.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
+                CompletableFuture<boolean[]> voteBFutureBest = CompletableFuture.supplyAsync(() -> agB.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
+                CompletableFuture.allOf(voteAFutureBest, voteBFutureBest).join();
+
+                boolean[] voteABest = voteAFutureBest.get();
+                boolean[] voteBBest = voteBFutureBest.get();
+                for (int i = 0; i < intersectSize; i++) {
+                    if (voteABest[i] && voteBBest[i]) {
+                        bestIntersect.add(generation[i]);       //Steady State GA
+                        bestIntersect.add(generation[i]);
+                    } else if (voteABest[i] || voteBBest[i]) {
+                        bestIntersect.add(generation[i]);
+                    }
+                }
+
+                List<Contract> proportionalCrossOverSelektion = new ArrayList<>(intersect);
+                proportionalCrossOverSelektion.addAll(bestIntersect);
+                //proportionalCrossOverSelektion.addAll(bestIntersect);
+                Collections.shuffle(proportionalCrossOverSelektion);    //maybe not relevant since always two random Contracts are picked for mating
 
                 /*
                 Step 3: Create new Generation
@@ -142,8 +163,8 @@ public class Verhandlung {
                     while (newGenerationHashSet.size() < generationsSize && innerWhileCount < (generationsSize-newGenerationHashSetStartsize)) {
                         futures.add(
                                 CompletableFuture.supplyAsync(() -> {
-                                    Contract parent1 = intersect.get(rand.nextInt(intersect.size()));
-                                    Contract parent2 = intersect.get(rand.nextInt(intersect.size()));
+                                    Contract parent1 = proportionalCrossOverSelektion.get(rand.nextInt(proportionalCrossOverSelektion.size()));
+                                    Contract parent2 = proportionalCrossOverSelektion.get(rand.nextInt(proportionalCrossOverSelektion.size()));
                                     Contract[] childs = parent1.crossover(parent2);
 
                                     if(!knownBadContracts.contains(childs[0])){
