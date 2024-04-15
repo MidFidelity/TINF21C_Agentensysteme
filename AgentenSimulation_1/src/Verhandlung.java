@@ -30,13 +30,13 @@ public class Verhandlung {
     public static final int ContractObjectMemSizeBytes = 985;
 
     //Hyperparameter
-    private static final int generationsSize = 150_000;
-    private static final int maxGenerations = 1000;
+    private static final int generationsSize = 500_000;
+    private static final int maxGenerations = 3400;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5; //increases to 1 during runtime
 
-    private static final double minAcceptacneRate = 0.03;
+    private static final double minAcceptacneRate = 0.02;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
@@ -197,7 +197,7 @@ public class Verhandlung {
                     generation[contractIndexToMutate].swapMutateRand();
                 }
 
-                
+
                 System.out.printf("%4d: Best A: %5d \t Best B: %5d \t AccAmount: %4d \t Intersect: %4d \t Contract: %5d %5d",
                         currentGeneration,
                         agA.getRound_best().getCost(), agB.getRound_best().getCost(),
