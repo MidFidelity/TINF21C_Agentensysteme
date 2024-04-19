@@ -30,13 +30,12 @@ public class Verhandlung {
     public static final int ContractObjectMemSizeBytes = 985;
 
     //Hyperparameter
-    private static final int generationsSize = 2000;
-    private static final int maxGenerations = 500;
+    private static final int generationsSize = 200_000;
+    private static final int maxGenerations = 1500;
 
-    private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5; //increases to 1 during runtime
 
-    private static final double minAcceptacneRate = 0.04;
+    private static final double minAcceptacneRate = 0.03;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
@@ -51,6 +50,7 @@ public class Verhandlung {
         int currentInfill = 0;
         int mutationAmount = (int) (generationsSize * mutationRate);
         SplittableRandom rand = new SplittableRandom();
+        long contractsReallyShown = 0;
 
         int avpro = Runtime.getRuntime().availableProcessors();
         try (ExecutorService executor = Executors.newFixedThreadPool(avpro)) {
@@ -95,6 +95,7 @@ public class Verhandlung {
 
                 int finalCurrentAcceptanceAmount = currentAcceptanceAmount;
                 Contract[] finalGeneration = generation;
+                contractsReallyShown += generationsSize;
                 CompletableFuture<boolean[]> voteAFuture = CompletableFuture.supplyAsync(() -> agA.voteLoop(finalGeneration, finalCurrentAcceptanceAmount), executor);
                 CompletableFuture<boolean[]> voteBFuture = CompletableFuture.supplyAsync(() -> agB.voteLoop(finalGeneration, finalCurrentAcceptanceAmount), executor);
 
@@ -133,6 +134,7 @@ public class Verhandlung {
 
                 //Get best 10% of intersect -> can be used for a higher selection probability for these Contracts
                 ArrayList<Contract> bestIntersect = new ArrayList<>();
+                contractsReallyShown += intersectSize;
                 CompletableFuture<boolean[]> voteAFutureBest = CompletableFuture.supplyAsync(() -> agA.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
                 CompletableFuture<boolean[]> voteBFutureBest = CompletableFuture.supplyAsync(() -> agB.voteLoop(intersect.toArray(new Contract[intersectSize]), (int) (intersectSize*0.1)), executor);
                 CompletableFuture.allOf(voteAFutureBest, voteBFutureBest).join();
@@ -224,6 +226,7 @@ public class Verhandlung {
             System.out.println("Changing to Terminal Phase");
             System.out.println("----------");
 
+            contractsReallyShown += generationsSize;
             boolean[] voteA = agA.voteLoop(generation, currentAcceptanceAmount);
             boolean[] voteB = agB.voteLoop(generation, currentAcceptanceAmount);
             ArrayList<Contract> intersect = new ArrayList<>();
@@ -263,12 +266,12 @@ public class Verhandlung {
             System.out.printf("""
                             Config:
                             MaxGenerations:    %d \t GenerationSize:       %d
-                            InfillRate:        %.3f \t MutationRate:         %.3f
+                            Contracts Really Shown: %d \t MutationRate:         %.3f
                             MinAcceptacneRate: %.3f \t AcceptanceRateGrowth: %.3f
                                                         
                             """,
                     maxGenerations, generationsSize,
-                    infillRate, mutationRate,
+                    contractsReallyShown, mutationRate,
                     minAcceptacneRate, acceptanceRateGrowth
             );
             System.out.print("""
