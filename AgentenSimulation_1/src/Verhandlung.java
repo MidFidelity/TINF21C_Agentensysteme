@@ -30,13 +30,13 @@ public class Verhandlung {
     public static final int ContractObjectMemSizeBytes = 985;
 
     //Hyperparameter
-    private static final int generationsSize = 500_000;
-    private static final int maxGenerations = 3400;
+    private static final int generationsSize = 2000;
+    private static final int maxGenerations = 500;
 
     private static final double infillRate = 0.05;
     private static final double mutationRate = 0.5; //increases to 1 during runtime
 
-    private static final double minAcceptacneRate = 0.02;
+    private static final double minAcceptacneRate = 0.04;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
@@ -114,7 +114,7 @@ public class Verhandlung {
                     voteBCount+=vote?1:0;
                 }
 
-                System.out.println(voteACount + " " + voteBCount);
+                //System.out.println(voteACount + " " + voteBCount);
 
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteA[i] && voteB[i]) {
@@ -167,10 +167,10 @@ public class Verhandlung {
 
                 List<CompletableFuture<Void>> futures = new LinkedList<>();
                 int whileCount = 0;
-                while (newGenerationHashSet.size() < generationsSize && whileCount < generationsSize * 3) {
+                while (newGenerationHashSet.size() < (generationsSize-1) && whileCount < generationsSize * 10) {
                     int innerWhileCount = 0;
-                    int newGenerationHashSetStartsize = newGenerationHashSet.size();
-                    while (newGenerationHashSet.size() < generationsSize && innerWhileCount < (generationsSize-newGenerationHashSetStartsize)) {
+                    int newGenerationHashSetStartSizeBreakCondition = (int)((float) (generationsSize - newGenerationHashSet.size()) /2);
+                    while (newGenerationHashSet.size() < (generationsSize-1) && innerWhileCount < newGenerationHashSetStartSizeBreakCondition) {
                         futures.add(
                                 CompletableFuture.supplyAsync(() -> {
                                     Contract parent1 = proportionalCrossOverSelektion.get(rand.nextInt(proportionalCrossOverSelektion.size()));
@@ -193,6 +193,7 @@ public class Verhandlung {
                     CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
                 }
 
+                //System.out.println(newGenerationHashSet.size());
                 //if not enough contract after (generationsSize * 3) try just fill with random - just for the sake of runtime
                 while (newGenerationHashSet.size() < generationsSize) {
                     newGenerationHashSet.addAll(Arrays.stream(med.getRandomContracts(generationsSize - newGenerationHashSet.size())).toList());
