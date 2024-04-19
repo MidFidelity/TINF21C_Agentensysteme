@@ -105,6 +105,16 @@ public class Verhandlung {
                 long voteTime = System.nanoTime() - startTime;
                 ArrayList<Contract> intersect = new ArrayList<>();
 
+                int voteACount = 0;
+                for (boolean vote : voteA) {
+                    voteACount+=vote?1:0;
+                }
+                int voteBCount = 0;
+                for (boolean vote : voteB) {
+                    voteBCount+=vote?1:0;
+                }
+
+                System.out.println(voteACount + " " + voteBCount);
 
                 for (int i = 0; i < generationsSize; i++) {
                     if (voteA[i] && voteB[i]) {
