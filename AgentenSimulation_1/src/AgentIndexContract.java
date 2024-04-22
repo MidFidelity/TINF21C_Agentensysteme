@@ -1,10 +1,28 @@
-public class AgentIndexContract {
-    final int index;
-    int costs;
-    final int[] contracts;
+public class AgentIndexContract extends Contract {
 
-    public AgentIndexContract( int index, int[] contracts ) {
+    private final int index;
+
+    private int cost;
+
+    public int getCost() {
+        return cost;
+    }
+
+    public void setCost(int cost) {
+        this.cost = cost;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public AgentIndexContract(int index, int[] contract) {
+        super(contract);
         this.index = index;
-        this.contracts = contracts;
+    }
+
+    public AgentIndexContract(int index, Contract contract) {
+        super(contract.getContract());
+        this.index = index;
     }
 }

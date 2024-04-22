@@ -1,14 +1,22 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class CustomerAgent extends Agent {
 
-	private final int[][] timeMatrix;
-	private final Object mutexEvaluatedTimes = new Object();
-	HashMap<int[], Integer> evaluatedTimes = new HashMap<>();
+	private final int[][] timeMatrix;	//Maybe replace with CopyOnWriteArrayList
+	Map<Contract, Integer> evaluatedTimes = new ConcurrentHashMap<>();
+	/*
+	Map<Contract, Integer> evaluatedTimes = Collections.synchronizedMap(new LinkedHashMap<Contract, Integer>(){
+		@Override
+        protected boolean removeEldestEntry(Map.Entry<Contract, Integer> eldest) {
+			return size() > 10_000_000;
+		}
+	});
+
+	 */
 
 	public CustomerAgent(File file) throws FileNotFoundException {
 
@@ -27,7 +35,7 @@ public class CustomerAgent extends Agent {
 
 	}
 
-	public boolean vote(int[] contract, int[] proposal) {
+	public boolean vote(Contract contract, Contract proposal) {
 		int timeContract = evaluateNEW(contract);
 		int timeProposal = evaluateNEW(proposal);
 		if (timeProposal < timeContract)
@@ -36,7 +44,7 @@ public class CustomerAgent extends Agent {
 			return false;
 	}
 
-	public boolean[] voteLoop(int[][] contracts, final int acceptanceAmount) {
+	public boolean[] voteLoop(Contract[] contracts, final int acceptanceAmount) {
 		// Fill the array
 		List<AgentIndexContract> temp = new ArrayList<>();
 		for (int i = 0; i < contracts.length; i++) {
@@ -46,41 +54,28 @@ public class CustomerAgent extends Agent {
 		//Calculate using multiprocessing
 		Stream<AgentIndexContract> stream = temp.parallelStream();
 		stream.forEach(i -> {
-			i.costs = evaluateNEW(i.contracts);
+			i.setCost(evaluateNEW(i));
 		});
 
 		// Sort it
-		temp.sort(Comparator.comparingInt(a -> a.costs));
+		temp.sort(Comparator.comparingInt(a -> a.getCost()));
 
 		boolean[] result = new boolean[contracts.length];
 		for (int i = 0; i < acceptanceAmount; i++) {
-			result[temp.get(i).index] = true;
+			result[temp.get(i).getIndex()] = true;
 		}
 
-		System.out.print(temp.getFirst().costs);
-		return result;
-		/*
-		Map<Integer, Integer> times = new LinkedHashMap<>();
-		for (int i = 0; i < contracts.length; i++) {
-			times.put(i, evaluateNEW(contracts[i]));
+		if (getGlobal_best() == null || getGlobal_best().getCost() > temp.getFirst().getCost()) {
+			setGlobal_best(temp.getFirst());
 		}
 
-		times = sortByValue(times);
+		setRound_best(temp.getFirst());
+		if (((long) evaluatedTimes.size()*Verhandlung.ContractObjectMemSizeBytes) > ((double)Verhandlung.maxMemBytes*0.3)){
+			evaluatedTimes.clear();
+			System.out.println("Clear times Cache");
+		}
 
-		boolean[] result = new boolean[contracts.length];
-		AtomicInteger count = new AtomicInteger();
-
-		times.forEach((integer, integer2) -> {
-			if (count.get() < acceptanceAmount) {
-				result[integer] = true;
-				count.getAndIncrement();
-			}
-		});
-
-		System.out.print(times.entrySet().iterator().next().getValue());
 		return result;
-
-		 */
 	}
 
 	private static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
@@ -96,7 +91,7 @@ public class CustomerAgent extends Agent {
 	}
 
 	@Override
-	public int voteEnd(int[][] contracts) {
+	public int voteEnd(Contract[] contracts) {
 		//calculation of times of given contracts
 		Map<Integer, Integer> times = new LinkedHashMap<>();
 		for (int i = 0; i < contracts.length; i++) {
@@ -120,33 +115,35 @@ public class CustomerAgent extends Agent {
 		return timeMatrix.length;
 	}
 
-	public void printUtility(int[] contract) {
-		System.out.print(evaluateNEW(contract));
+	public AgentIndexContract printUtility(Contract contract) {
+		AgentIndexContract newContract = new AgentIndexContract(0, contract);
+		newContract.setCost(evaluateNEW(contract));
+		return newContract;
 	}
 	
-	private int evaluateNEW(int[] solution) {
-		synchronized (mutexEvaluatedTimes) {
-			if (evaluatedTimes.containsKey(solution)) {
-				return evaluatedTimes.get(solution);
-			}
+	private int evaluateNEW(Contract solution) {
+		if (evaluatedTimes.containsKey(solution)) {
+			return evaluatedTimes.get(solution);
 		}
+
+		int[] solutionArr = solution.getContract();
 
 		int anzM = timeMatrix[0].length;
 
-		if(timeMatrix.length != solution.length)System.out.println("Fehler in ");
+		if(timeMatrix.length != solution.getContractSize())System.out.println("Fehler in ");
 		int[][] start = new int[timeMatrix.length][timeMatrix[0].length];
 
-		Arrays.stream(start).forEach(a -> Arrays.fill(a, 0));	//should be irrelevant!
+		//Arrays.stream(start).forEach(a -> Arrays.fill(a, 0));	//should be irrelevant!
 
-		int job = solution[0];
+		int job = solutionArr[0];
 		for(int m=1;m<anzM;m++) {
 			start[job][m] = start[job][m-1] + timeMatrix[job][m-1];
 		}
 
-		for(int j=1;j<solution.length;j++) {
+		for(int j=1;j<solutionArr.length;j++) {
 			int delay             = 0;
-			int vorg              = solution[j-1];
-			job                   = solution[j];
+			int vorg              = solutionArr[j-1];
+			job                   = solutionArr[j];
 			boolean delayErhoehen;
 			do {
 				delayErhoehen = false;
@@ -161,7 +158,7 @@ public class CustomerAgent extends Agent {
 				}
 			}while(delayErhoehen);
 		}
-		int last = solution[solution.length-1];
+		int last = solutionArr[solutionArr.length-1];
 
 
 //		for(int j=0;j<solution.length;j++) {
@@ -172,9 +169,7 @@ public class CustomerAgent extends Agent {
 //		}
 
 		int timeValue = start[last][anzM-1]+timeMatrix[last][anzM-1];
-		synchronized (mutexEvaluatedTimes){
-			evaluatedTimes.put(solution, timeValue);
-		}
+		evaluatedTimes.put(solution, timeValue);
 		return (timeValue);
 
 	}

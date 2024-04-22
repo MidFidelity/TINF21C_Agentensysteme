@@ -1,14 +1,29 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 public class SupplierAgent extends Agent {
 
     private final int[][] costMatrix;
-    private final Object mutexEvaluatedCosts = new Object();
+    Map<Contract, Integer> evaluatedCosts = new ConcurrentHashMap<>();
+    /*
+    Map<Contract, Integer> evaluatedCosts = Collections.synchronizedMap(new LinkedHashMap<Contract, Integer>(){
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<Contract, Integer> eldest) {
+            return size() > 10_000_000;
+        }
+    });
+    /*
+    ConcurrentSkipListMap<String, String> cache = new ConcurrentSkipListMap<>();
 
-    HashMap<int[], Integer> evaluatedCosts = new HashMap<>();
+// Check if max size is reached before inserting something in it. Make some room for new entry.
+while (cache.size() >= maxSize) {
+    cache.pollFirstEntry();
+}
+     */
+
 
     public SupplierAgent(File file) throws FileNotFoundException {
 
@@ -24,7 +39,7 @@ public class SupplierAgent extends Agent {
         scanner.close();
     }
 
-    public boolean vote(int[] contract, int[] proposal) {
+    public boolean vote(Contract contract, Contract proposal) {
         int costContract = evaluate(contract);
         int costProposal = evaluate(proposal);
         if (costProposal < costContract)
@@ -38,8 +53,8 @@ public class SupplierAgent extends Agent {
     }
 
     @Override
-    public boolean[] voteLoop(int[][] contracts, final int acceptanceAmount) {
-        // Fill the array
+    public boolean[] voteLoop(Contract[] contracts, final int acceptanceAmount) {
+        // Fill the list
         List<AgentIndexContract> temp = new ArrayList<>();
         for (int i = 0; i < contracts.length; i++) {
             temp.add(new AgentIndexContract(i, contracts[i]));
@@ -48,18 +63,27 @@ public class SupplierAgent extends Agent {
         //Calculate using multiprocessing
         Stream<AgentIndexContract> stream = temp.parallelStream();
         stream.forEach(i -> {
-            i.costs = evaluate(i.contracts);
+            i.setCost(evaluate(i));
         });
 
         // Sort it
-        temp.sort(Comparator.comparingInt(a -> a.costs));
+        temp.sort(Comparator.comparingInt(a -> a.getCost()));
 
         boolean[] result = new boolean[contracts.length];
         for (int i = 0; i < acceptanceAmount; i++) {
-            result[temp.get(i).index] = true;
+            result[temp.get(i).getIndex()] = true;
         }
 
-        System.out.print(temp.getFirst().costs);
+        if (getGlobal_best() == null || getGlobal_best().getCost() > temp.getFirst().getCost()) {
+            setGlobal_best(temp.getFirst());
+        }
+
+        setRound_best(temp.getFirst());
+        if (((long) evaluatedCosts.size()*Verhandlung.ContractObjectMemSizeBytes) > ((double)Verhandlung.maxMemBytes*0.3)){
+            evaluatedCosts.clear();
+            System.out.println("Clear Costs Cache");
+        }
+
         return result;
 
 /*
@@ -99,7 +123,7 @@ public class SupplierAgent extends Agent {
     }
 
     @Override
-    public int voteEnd(int[][] contracts) {
+    public int voteEnd(Contract[] contracts) {
         //calculation of costs of given contracts
         Map<Integer, Integer> costs = new LinkedHashMap<>();
         for (int i = 0; i < contracts.length; i++) {
@@ -110,7 +134,7 @@ public class SupplierAgent extends Agent {
         //find the index/key of the highest/worst cost in the costs map of ln 75
         int foundKey = 0;
         for (Map.Entry<Integer, Integer> entry : costs.entrySet()) {
-            if(entry.getValue().equals(sortedCosts.get(contracts.length-1))) {
+            if (entry.getValue().equals(sortedCosts.get(contracts.length - 1))) {
                 foundKey = entry.getKey();
                 break;
             }
@@ -118,27 +142,25 @@ public class SupplierAgent extends Agent {
         return foundKey;
     }
 
-    public void printUtility(int[] contract) {
-        System.out.print(evaluate(contract));
+    public AgentIndexContract printUtility(Contract contract) {
+        AgentIndexContract newContract = new AgentIndexContract(0, contract);
+        newContract.setCost(evaluate(contract));
+        return newContract;
     }
 
 
-    private int evaluate(int[] contract) {
-        synchronized (mutexEvaluatedCosts) {
-            if (evaluatedCosts.containsKey(contract)) {
-                return evaluatedCosts.get(contract);
-            }
+    private int evaluate(Contract contract) {
+        if (evaluatedCosts.containsKey(contract)) {
+            return evaluatedCosts.get(contract);
         }
-
+        int[] contractArr = contract.getContract();
         int result = 0;
-        for (int i = 0; i < contract.length - 1; i++) {
-            int zeile = contract[i];
-            int spalte = contract[i + 1];
+        for (int i = 0; i < contractArr.length - 1; i++) {
+            int zeile = contractArr[i];
+            int spalte = contractArr[i + 1];
             result += costMatrix[zeile][spalte];
         }
-        synchronized (mutexEvaluatedCosts) {
-            evaluatedCosts.put(contract, result);
-        }
+        evaluatedCosts.put(contract, result);
         return result;
 
     }
