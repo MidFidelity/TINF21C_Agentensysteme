@@ -30,12 +30,12 @@ public class Verhandlung {
     public static final int ContractObjectMemSizeBytes = 985;
 
     //Hyperparameter
-    private static final int generationsSize = 200_000;
-    private static final int maxGenerations = 1500;
+    private static final int generationsSize = 1_500_000;
+    private static final int maxGenerations = 3400;
 
     private static final double mutationRate = 0.5; //increases to 1 during runtime
 
-    private static final double minAcceptacneRate = 0.03;
+    private static final double minAcceptacneRate = 0.015;
     private static final double maxAcceptacneRate = 0.7;
     private static final double acceptanceRateGrowth = maxAcceptacneRate - minAcceptacneRate;
     private static final double accepanceRateOffset = 0.05;
