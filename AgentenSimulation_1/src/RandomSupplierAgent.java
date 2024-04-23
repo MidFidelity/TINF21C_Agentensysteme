@@ -29,8 +29,8 @@ public class RandomSupplierAgent extends SupplierAgent {
 
     @Override
     public int voteEnd(Contract[] contracts) {
-        super.voteEnd(contracts);
 
-        return rand.nextInt(contracts.length);
+
+        return super.voteEnd(contracts);
     }
 }
